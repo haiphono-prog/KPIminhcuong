@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 
     <style>
         body { background-color: #000; overflow: hidden; margin: 0; }
@@ -121,19 +122,24 @@
                 renderEmployeeView();
             }
         }
+        let statusChart = null;
+        let employeeChart = null;
 
-        
-        // ================= CSS DÙNG CHUNG CHO Ô NHẬP LIỆU ĐẸP & SẮC NÉT =================
-        // (Bạn có thể nhúng đoạn này vào thẻ <style> trên đầu file html nếu muốn)
-        const customInputStyle = `
-            background-color: #121416 !important; 
-            border: 1px solid #2b3035 !important; 
-            color: #ffffff !important;
-            border-radius: 8px;
-            padding: 10px 15px;
-        `;
+        // Tự động tính toán màu sắc dựa trên Hạn chót
+        function getDeadlineStatus(dueDateStr, progress) {
+            if (progress === 100) return { color: 'success', hex: '#10b981', text: 'Đã hoàn thành' }; // Xanh lá
+            if (!dueDateStr) return { color: 'info', hex: '#0ea5e9', text: 'Đang thực hiện' }; // Xanh dương (Không có hạn)
 
-        // ================= GIAO DIỆN ADMIN CHUYÊN NGHIỆP =================
+            let due = new Date(dueDateStr).getTime();
+            let now = new Date().getTime();
+            let hoursLeft = (due - now) / (1000 * 60 * 60);
+
+            if (hoursLeft < 0) return { color: 'danger', hex: '#ef4444', text: 'QUÁ HẠN' }; // Đỏ
+            if (hoursLeft <= 24) return { color: 'warning', hex: '#f59e0b', text: 'SẮP ĐẾN HẠN' }; // Vàng
+            return { color: 'success', hex: '#10b981', text: 'Trong thời hạn' }; // Xanh lá
+        }
+
+        // ================= GIAO DIỆN ADMIN TỔNG QUAN TOÀN DIỆN =================
         async function renderAdminView() {
             document.getElementById('adminView').classList.remove('d-none');
             
@@ -146,14 +152,61 @@
             `).join('') : '<p class="text-muted">Chưa có nhân sự nào.</p>';
 
             document.getElementById('adminKpiList').innerHTML = `
-                <div class="p-4 mb-4 rounded-4 shadow-sm" style="background: rgba(14, 165, 233, 0.08); border: 1px solid #0ea5e9;">
-                    <h5 class="text-info fw-bold mb-3"><i class="bi bi-clipboard2-plus-fill me-2"></i>GIAO VIỆC CHUYÊN NGHIỆP</h5>
-                    
+                <!-- PHẦN 1: TỔNG QUAN CÔNG TY -->
+                <h5 class="text-info fw-bold mb-3"><i class="bi bi-building me-2"></i>1. TỔNG QUAN CÔNG TY</h5>
+                <div class="row mb-4">
+                    <div class="col-md-4 mb-3">
+                        <div class="p-3 rounded-4 shadow-sm" style="background: linear-gradient(135deg, #0ea5e9, #0284c7); border: none;">
+                            <div class="text-white fw-bold mb-1"><i class="bi bi-list-task me-2"></i>TỔNG CÔNG VIỆC</div>
+                            <h2 class="text-white fw-bold mb-0" id="statTotalTasks">0</h2>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="p-3 rounded-4 shadow-sm" style="background: linear-gradient(135deg, #10b981, #059669); border: none;">
+                            <div class="text-white fw-bold mb-1"><i class="bi bi-check-circle-fill me-2"></i>ĐÃ HOÀN THÀNH</div>
+                            <h2 class="text-white fw-bold mb-0" id="statCompleted">0</h2>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="p-3 rounded-4 shadow-sm" style="background: linear-gradient(135deg, #f59e0b, #d97706); border: none;">
+                            <div class="text-white fw-bold mb-1"><i class="bi bi-hourglass-split me-2"></i>ĐANG THỰC HIỆN</div>
+                            <h2 class="text-white fw-bold mb-0" id="statInProgress">0</h2>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-5">
+                    <div class="col-md-4 mb-3">
+                        <div class="p-3 rounded-4 shadow-sm h-100" style="background: #1a1d20; border: 1px solid #2b3035;">
+                            <h6 class="fw-bold mb-3 text-info"><i class="bi bi-pie-chart-fill me-2"></i>TỈ LỆ HOÀN THÀNH</h6>
+                            <div style="height: 200px; display: flex; justify-content: center;">
+                                <canvas id="statusChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-8 mb-3">
+                        <div class="p-3 rounded-4 shadow-sm h-100" style="background: #1a1d20; border: 1px solid #2b3035;">
+                            <h6 class="fw-bold mb-3 text-info"><i class="bi bi-bar-chart-line-fill me-2"></i>PHÂN BỔ KHỐI LƯỢNG CHO NHÂN SỰ</h6>
+                            <div style="height: 200px;">
+                                <canvas id="employeeChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PHẦN 2: TỔNG QUAN TỪNG NHÂN SỰ -->
+                <h5 class="text-warning fw-bold mb-3"><i class="bi bi-people-fill me-2"></i>2. TỔNG QUAN TỪNG NHÂN SỰ</h5>
+                <div id="employeeOverviewContainer" class="row mb-5">
+                    <!-- Dữ liệu từng nhân viên sẽ được đổ vào đây -->
+                </div>
+
+                <!-- PHẦN 3: GIAO VIỆC MỚI -->
+                <h5 class="text-success fw-bold mb-3"><i class="bi bi-clipboard2-plus-fill me-2"></i>3. PHÁT HÀNH CÔNG VIỆC MỚI</h5>
+                <div class="p-4 mb-5 rounded-4 shadow-sm" style="background: rgba(14, 165, 233, 0.08); border: 1px solid #0ea5e9;">
                     <div class="mb-3">
                         <label class="text-white fw-bold small mb-1">TÊN CÔNG VIỆC</label>
                         <input type="text" id="adminTaskName" class="form-control text-white" style="${customInputStyle}" placeholder="Ví dụ: Triển khai chiến dịch Marketing Q2">
                     </div>
-
                     <div class="row mb-3">
                         <div class="col-md-6 mb-2 mb-md-0">
                             <label class="text-white fw-bold small mb-1">THỜI GIAN BẮT ĐẦU</label>
@@ -164,29 +217,269 @@
                             <input type="datetime-local" id="adminDueDate" class="form-control text-white" style="${customInputStyle}">
                         </div>
                     </div>
-
                     <div class="mb-3">
                         <label class="text-white fw-bold small mb-1">GIAO CHO NHÂN SỰ (CHỌN MỘT HOẶC NHIỀU)</label>
                         <div class="p-3 rounded-3" style="background: #121416; border: 1px solid #2b3035; max-height: 150px; overflow-y: auto;">
                             ${empCheckboxes}
                         </div>
                     </div>
-
                     <div class="mb-3">
-                        <label class="text-white fw-bold small mb-1">CÁC HẠNG MỤC CÔNG VIỆC (MỖI HẠNG MỤC MỘT DÒNG)</label>
-                        <textarea id="adminSubtasks" class="form-control text-white" style="${customInputStyle}" rows="3" placeholder="1. Lên ý tưởng thiết kế&#10;2. Viết nội dung chi tiết&#10;3. Gửi duyệt Giám đốc"></textarea>
+                        <label class="text-white fw-bold small mb-1">CÁC HẠNG MỤC CÔNG VIỆC</label>
+                        <textarea id="adminSubtasks" class="form-control text-white" style="${customInputStyle}" rows="3" placeholder="1. Lên ý tưởng thiết kế&#10;2. Viết nội dung chi tiết..."></textarea>
                     </div>
-
                     <button onclick="assignProfessionalTask()" class="btn btn-info w-100 fw-bold py-3 text-dark">PHÁT HÀNH CÔNG VIỆC</button>
                 </div>
-                <h6 class="text-white fw-bold mb-3">DANH SÁCH CÔNG VIỆC & THEO DÕI REALTIME</h6>
+                
+                <!-- PHẦN 4: CHI TIẾT TOÀN BỘ -->
+                <h5 class="text-white fw-bold mb-3"><i class="bi bi-list-nested me-2"></i>4. CHI TIẾT TOÀN BỘ CÔNG VIỆC</h5>
                 <div id="allTasksContainer">Đang tải...</div>
+
+                <!-- CHÈN THÊM PHẦN 5: BẢNG ĐIỂM DANH REALTIME -->
+                <h5 class="text-success fw-bold mb-3 mt-5"><i class="bi bi-person-check-fill me-2"></i>5. TRẠNG THÁI ĐIỂM DANH HÔM NAY</h5>
+                <div class="p-4 mb-5 rounded-4 shadow-sm" style="background: #1a1d20; border: 1px solid #2b3035;">
+                    <div id="attendanceContainer" class="row g-3">
+                        <!-- Danh sách điểm danh sẽ đổ vào đây -->
+                    </div>
+                </div>
             `;
             
             loadAllTasksAdmin();
-            setupAdminRealtime(); // Lắng nghe realtime từ nhân viên
+            loadAttendanceAdmin(); // Gọi thêm hàm tải điểm danh
+            setupAdminRealtime();
         }
 
+        async function loadAllTasksAdmin() {
+            const { data: employees } = await supabaseClient.from('profiles').select('*').eq('role', 'employee');
+            const { data: tasks } = await supabaseClient.from('employee_kpis')
+                .select('*, task_assignees(employee_id, profiles(full_name)), subtasks(*)')
+                .order('created_at', { ascending: false })
+                .order('order_index', { foreignTable: 'subtasks', ascending: true }); // Ép subtasks sắp xếp cố định
+
+            // ================= 1. XỬ LÝ BIỂU ĐỒ & CHỈ SỐ CÔNG TY =================
+            if (tasks) {
+                let total = tasks.length;
+                let completed = tasks.filter(t => t.progress === 100).length;
+                let inProgress = total - completed;
+
+                document.getElementById('statTotalTasks').innerText = total;
+                document.getElementById('statCompleted').innerText = completed;
+                document.getElementById('statInProgress').innerText = inProgress;
+
+                const ctxStatus = document.getElementById('statusChart').getContext('2d');
+                if (statusChart) statusChart.destroy();
+                statusChart = new Chart(ctxStatus, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Hoàn thành', 'Đang làm'],
+                        datasets: [{ data: [completed, inProgress], backgroundColor: ['#10b981', '#f59e0b'], borderWidth: 0 }]
+                    },
+                    options: { maintainAspectRatio: false, plugins: { legend: { labels: { color: 'white' } } } }
+                });
+
+                let empTaskCount = {};
+                tasks.forEach(t => {
+                    if(t.task_assignees) {
+                        t.task_assignees.forEach(a => {
+                            let name = a.profiles.full_name;
+                            empTaskCount[name] = (empTaskCount[name] || 0) + 1;
+                        });
+                    }
+                });
+
+                const ctxEmp = document.getElementById('employeeChart').getContext('2d');
+                if (employeeChart) employeeChart.destroy();
+                employeeChart = new Chart(ctxEmp, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(empTaskCount),
+                        datasets: [{ label: 'Số lượng công việc', data: Object.values(empTaskCount), backgroundColor: '#0ea5e9', borderRadius: 4 }]
+                    },
+                    options: {
+                        maintainAspectRatio: false,
+                        scales: { y: { ticks: { color: '#adb5bd', stepSize: 1 }, grid: { color: '#2b3035' } }, x: { ticks: { color: '#adb5bd' }, grid: { display: false } } },
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            }
+
+            // ================= 2. XỬ LÝ TỔNG QUAN TỪNG NHÂN SỰ =================
+            let empOverviewHtml = '';
+            if (employees && employees.length > 0) {
+                employees.forEach(emp => {
+                    let myTasks = tasks ? tasks.filter(t => t.task_assignees.some(a => a.employee_id === emp.id)) : [];
+                    let totalTasks = myTasks.length;
+                    let completedTasks = myTasks.filter(t => t.progress === 100).length;
+                    let empProgress = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+
+                    let miniTaskListHtml = '';
+                    if (totalTasks === 0) {
+                        miniTaskListHtml = '<div class="text-white-50 small">Chưa có công việc nào.</div>';
+                    } else {
+                        myTasks.forEach(t => {
+                            miniTaskListHtml += `
+                            <div class="mb-2 p-2 rounded d-flex justify-content-between align-items-center" style="background: rgba(0,0,0,0.3); border-left: 3px solid ${t.progress === 100 ? '#10b981' : '#0ea5e9'};">
+                                <span class="text-white small fw-bold text-truncate me-2" style="max-width: 70%;" title="${t.task_name}">${t.task_name}</span>
+                                <span class="badge bg-dark border border-secondary text-info progress-badge-${t.id}">${t.progress}%</span>
+                            </div>`;
+                        });
+                    }
+
+                    empOverviewHtml += `
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="p-3 rounded-4 shadow-sm h-100" style="background: #1a1d20; border: 1px solid #3f3f46;">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="text-warning fw-bold mb-0 fs-5"><i class="bi bi-person-badge-fill me-2"></i>${emp.full_name}</h6>
+                                <span class="badge bg-secondary text-white">${completedTasks}/${totalTasks} Xong</span>
+                            </div>
+                            <div class="small text-white-50 mb-2">Hiệu suất tổng: ${empProgress}%</div>
+                            <div class="progress mb-3" style="height: 5px;"><div class="progress-bar bg-success" style="width: ${empProgress}%"></div></div>
+                            
+                            <div class="p-2 rounded bg-dark border border-secondary" style="max-height: 150px; overflow-y: auto;">
+                                ${miniTaskListHtml}
+                            </div>
+                        </div>
+                    </div>`;
+                });
+            }
+            document.getElementById('employeeOverviewContainer').innerHTML = empOverviewHtml;
+
+            // ================= 3. CHI TIẾT CÔNG VIỆC & KHUNG CHAT ADMIN =================
+            let allTasksHtml = '';
+            if (!tasks || tasks.length === 0) allTasksHtml = '<p class="text-white-50">Chưa có công việc nào được tạo.</p>';
+            else {
+                tasks.forEach(t => {
+                    let statusInfo = getDeadlineStatus(t.due_date, t.progress);
+                    let assigneesStr = t.task_assignees.map(a => `<span class="badge bg-dark text-info border border-info me-1 fw-bold">👤 ${a.profiles.full_name}</span>`).join('');
+                    
+                    let subtasksHtml = t.subtasks.map(s => `
+                        <div class="small text-white mb-2 d-flex justify-content-between align-items-center">
+                            <span><i class="bi ${s.progress === 100 ? 'bi-check-circle-fill text-success' : 'bi-dash-circle text-warning'} me-2"></i>${s.title}</span>
+                            <span class="badge bg-secondary">${s.progress || 0}%</span>
+                        </div>
+                    `).join('');
+                    
+                    allTasksHtml += `
+                    <div class="p-3 mb-3 rounded-3 text-white shadow-sm" style="background: #1a1d20; border-left: 5px solid ${statusInfo.hex}; border: 1px solid #2b3035;">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="text-white fw-bold mb-0 fs-5 pe-3">${t.task_name}</h6>
+                            <div class="d-flex gap-2 align-items-center">
+                                <span class="badge bg-${statusInfo.color} fw-bold px-2 py-1 progress-badge-${t.id}">${t.progress}%</span>
+                                <button onclick="editTask('${t.id}')" class="btn btn-sm btn-outline-info p-1 px-2" title="Sửa"><i class="bi bi-pencil"></i></button>
+                                <button onclick="deleteTask('${t.id}')" class="btn btn-sm btn-outline-danger p-1 px-2" title="Xóa"><i class="bi bi-trash"></i></button>
+                            </div>
+                        </div>
+                        <div class="mb-2">${assigneesStr}</div>
+                        <div class="small text-${statusInfo.color} fw-bold mb-3">
+                            <i class="bi bi-clock-history me-1"></i> ${statusInfo.text} <br>
+                            <span class="text-white-50 fw-normal">🏁 Hạn chót: ${t.due_date ? new Date(t.due_date).toLocaleString() : 'Không có'}</span>
+                        </div>
+                        <div class="p-2 rounded mb-2 bg-black bg-opacity-50 border border-secondary">${subtasksHtml || '<span class="text-muted small">Không có hạng mục chi tiết</span>'}</div>
+                        
+                        <!-- KHUNG TRAO ĐỔI DÀNH CHO ADMIN (ĐÃ CHÈN VÀO ĐÂY) -->
+                        <div class="p-3 rounded bg-black bg-opacity-50 border border-secondary mt-3 mb-3">
+                            <div class="text-info fw-bold small mb-2"><i class="bi bi-chat-dots-fill me-1"></i> TRAO ĐỔI VỚI NHÂN SỰ:</div>
+                            <div id="comments_box_${t.id}" class="mb-2 custom-scrollbar" style="max-height: 120px; overflow-y: auto;"></div>
+                            <div class="input-group input-group-sm">
+                                <input type="text" id="comment_input_${t.id}" class="form-control text-white bg-dark border-secondary" placeholder="Nhập phản hồi, chỉ đạo cho nhân sự...">
+                                <button onclick="sendTaskComment('${t.id}')" class="btn btn-outline-info fw-bold">GỬI</button>
+                            </div>
+                        </div>
+
+                        <div class="progress mt-2" style="height: 6px;"><div class="progress-bar bg-${statusInfo.color} progress-bar-${t.id}" style="width: ${t.progress}%"></div></div>
+                    </div>`;
+
+                    // GỌI TẢI COMMENT NGẦM CHO ADMIN
+                    setTimeout(() => loadTaskComments(t.id), 100);
+                });
+            }
+            document.getElementById('allTasksContainer').innerHTML = allTasksHtml;
+        }
+
+            // Tải danh sách điểm danh trong ngày hôm nay
+        async function loadAttendanceAdmin() {
+            const { data: employees } = await supabaseClient.from('profiles').select('*').eq('role', 'employee');
+            
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            
+            const { data: attendance } = await supabaseClient.from('attendance')
+                .select('*')
+                .gte('created_at', today.toISOString());
+
+            let html = '';
+            if (employees) {
+                employees.forEach(emp => {
+                    let checkInRecord = attendance ? attendance.find(a => a.employee_id === emp.id) : null;
+                    if(checkInRecord) {
+                        let time = new Date(checkInRecord.created_at).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'});
+                        html += `
+                        <div class="col-md-4 col-lg-3">
+                            <div class="p-3 rounded-3 text-center border border-success" style="background: rgba(16, 185, 129, 0.1);">
+                                <h6 class="text-white fw-bold mb-2 text-truncate">${emp.full_name}</h6>
+                                <span class="badge bg-success w-100 py-2 fs-6"><i class="bi bi-check2-circle me-1"></i> Có mặt lúc ${time}</span>
+                            </div>
+                        </div>`;
+                    } else {
+                        html += `
+                        <div class="col-md-4 col-lg-3">
+                            <div class="p-3 rounded-3 text-center border border-secondary" style="background: rgba(255,255,255,0.02);">
+                                <h6 class="text-white-50 fw-bold mb-2 text-truncate">${emp.full_name}</h6>
+                                <span class="badge bg-secondary text-dark w-100 py-2 fs-6"><i class="bi bi-x-circle me-1"></i> Chưa điểm danh</span>
+                            </div>
+                        </div>`;
+                    }
+                });
+            }
+            document.getElementById('attendanceContainer').innerHTML = html;
+        }
+       // Khai báo một biến để giữ đường truyền
+        let myAdminChannel = null;
+
+        // Thêm chữ "async" ở đầu hàm
+        async function setupAdminRealtime() {
+            // AWAIT TẠI ĐÂY LÀ CHÌA KHÓA: Đợi xóa sạch kết nối cũ rồi mới kết nối mới
+            if (myAdminChannel) {
+                await supabaseClient.removeChannel(myAdminChannel);
+            } else {
+                await supabaseClient.removeAllChannels();
+            }
+
+            myAdminChannel = supabaseClient.channel('admin-realtime')
+                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'employee_kpis' }, payload => {
+                    let updated = payload.new;
+                    
+                    // 1. Ép nhảy số và thanh chạy trên giao diện giám đốc ngay lập tức (0 độ trễ)
+                    let badges = document.querySelectorAll(`.progress-badge-${updated.id}`);
+                    let bars = document.querySelectorAll(`.progress-bar-${updated.id}`);
+                    badges.forEach(badge => badge.innerText = updated.progress + '%');
+                    bars.forEach(bar => bar.style.width = updated.progress + '%');
+
+                    // 2. Chạy ngầm tải lại biểu đồ và trạng thái hạng mục con
+                    loadAllTasksAdmin(); 
+                })
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'attendance' }, payload => {
+                    loadAttendanceAdmin(); 
+                })
+                .subscribe((status) => {
+                    console.log("Trạng thái kết nối Realtime:", status);
+                    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                        // Thử kết nối lại nếu mạng của Admin bị rớt
+                        setTimeout(() => myAdminChannel.subscribe(), 2000);
+                    }
+                });
+        }
+
+        // ================= CSS DÙNG CHUNG CHO Ô NHẬP LIỆU ĐẸP & SẮC NÉT =================
+        // (Bạn có thể nhúng đoạn này vào thẻ <style> trên đầu file html nếu muốn)
+        const customInputStyle = `
+            background-color: #121416 !important; 
+            border: 1px solid #2b3035 !important; 
+            color: #ffffff !important;
+            border-radius: 8px;
+            padding: 10px 15px;
+        `;
+
+       
         async function assignProfessionalTask() {
             const taskName = document.getElementById('adminTaskName').value.trim();
             const startDate = document.getElementById('adminStartDate').value;
@@ -215,7 +508,14 @@
 
             if (subtasksText) {
                 let lines = subtasksText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-                let subtaskRows = lines.map(line => ({ task_id: taskId, title: line, is_completed: false }));
+                // Bổ sung order_index để đánh số thứ tự cố định từ trên xuống dưới
+                let subtaskRows = lines.map((line, index) => ({ 
+                    task_id: taskId, 
+                    title: line, 
+                    is_completed: false, 
+                    progress: 0, 
+                    order_index: index 
+                }));
                 await supabaseClient.from('subtasks').insert(subtaskRows);
             }
 
@@ -223,154 +523,97 @@
             renderAdminView();
         }
 
-        async function loadAllTasksAdmin() {
-            const { data: tasks } = await supabaseClient.from('employee_kpis')
-                .select('*, task_assignees(profiles(full_name)), subtasks(*)')
-                .order('created_at', { ascending: false });
-
-            let html = '';
-            if (!tasks || tasks.length === 0) html = '<p class="text-white-50">Chưa có công việc nào được tạo.</p>';
-            else {
-                tasks.forEach(t => {
-                    let assigneesStr = t.task_assignees.map(a => `<span class="badge bg-info text-dark me-1 fw-bold">👤 ${a.profiles.full_name}</span>`).join('');
-                    let subtasksHtml = t.subtasks.map(s => `<div class="small text-white mb-1"><i class="bi ${s.is_completed ? 'bi-check-square-fill text-success' : 'bi-square text-warning'} me-2"></i>${s.title}</div>`).join('');
-                    
-                    html += `
-                    <div class="p-3 mb-3 rounded-3 text-white" style="background: #1a1d20; border-left: 4px solid #0ea5e9; border: 1px solid #2b3035;" id="task_card_${t.id}">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <h6 class="text-white fw-bold mb-0 fs-5">${t.task_name}</h6>
-                            <span class="badge bg-dark text-info border border-info fw-bold px-2 py-1 progress-badge-${t.id}">${t.progress}%</span>
-                        </div>
-                        <div class="mb-2">${assigneesStr}</div>
-                        <div class="small text-warning mb-2 fw-semibold">
-                            ⏱ Bắt đầu: ${t.start_date ? new Date(t.start_date).toLocaleString() : 'Không có'} &nbsp;|&nbsp; 
-                            🏁 Hạn chót: ${t.due_date ? new Date(t.due_date).toLocaleString() : 'Không có'}
-                        </div>
-                        <div class="p-2 rounded mb-2 bg-black bg-opacity-50 border border-secondary">${subtasksHtml || '<span class="text-muted small">Không có hạng mục chi tiết</span>'}</div>
-                        <div class="progress mt-2" style="height: 6px;"><div class="progress-bar bg-info progress-bar-${t.id}" style="width: ${t.progress}%"></div></div>
-                    </div>`;
-                });
-            }
-            document.getElementById('allTasksContainer').innerHTML = html;
-        }
-
-        // Bật Realtime cho Admin với cơ chế tự động kết nối lại
-        function setupAdminRealtime() {
-            // Lắng nghe thay đổi trên bảng employee_kpis
-            const channel = supabaseClient.channel('admin-realtime-kpis')
-                .on(
-                    'postgres_changes', 
-                    { event: 'UPDATE', schema: 'public', table: 'employee_kpis' }, 
-                    payload => {
-                        let updated = payload.new;
-                        let badge = document.querySelector(`.progress-badge-${updated.id}`);
-                        let bar = document.querySelector(`.progress-bar-${updated.id}`);
-                        if(badge) badge.innerText = updated.progress + '%';
-                        if(bar) bar.style.width = updated.progress + '%';
-                    }
-                )
-                .subscribe((status) => {
-                    console.log("Trạng thái Realtime Admin:", status);
-                    // Nếu lỗi kênh, thử kết nối lại sau 2 giây
-                    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                        setTimeout(() => {
-                            channel.subscribe();
-                        }, 2000);
-                    }
-                });
-        }
-
-
-        // ================= GIAO DIỆN NHÂN VIÊN (BÁO CÁO ĐỊNH KỲ) =================
-        function renderEmployeeView() {
-            document.getElementById('employeeView').classList.remove('d-none');
-            
-            document.getElementById('footerControls').innerHTML = `
-                <button onclick="checkIn()" class="btn py-3 fw-bold flex-grow-1 text-success bg-dark border-0 border-end border-secondary rounded-0"><i class="bi bi-geo-alt-fill me-2 fs-5"></i> ĐIỂM DANH</button>
-                <button onclick="handleLogout()" class="btn py-3 fw-bold flex-grow-1 text-danger bg-dark border-0 rounded-0"><i class="bi bi-box-arrow-right me-2 fs-5"></i> THOÁT</button>
-            `;
-            
-            document.getElementById('employeeKpiList').innerHTML = `
-                <h6 class="text-info fw-bold mb-3"><i class="bi bi-journal-check me-2"></i>CÔNG VIỆC ĐƯỢC GIAO & BÁO CÁO TIẾN ĐỘ</h6>
-                <div id="myTasksContainer">Đang tải công việc...</div>
-            `;
-            
-            loadMyProfessionalTasks();
-        }
-
         async function loadMyProfessionalTasks() {
-            const { data: assignments } = await supabaseClient.from('task_assignees')
-                .select('task_id')
-                .eq('employee_id', currentUser.id);
-
+            const { data: assignments } = await supabaseClient.from('task_assignees').select('task_id').eq('employee_id', currentUser.id);
             if (!assignments || assignments.length === 0) {
                 document.getElementById('myTasksContainer').innerHTML = '<p class="text-white-50 text-center mt-4">Bạn chưa được giao công việc nào.</p>';
                 return;
             }
 
             let taskIds = assignments.map(a => a.task_id);
-
-            const { data: tasks } = await supabaseClient.from('employee_kpis')
-                .select('*, subtasks(*)')
-                .in('id', taskIds)
-                .order('created_at', { ascending: false });
+            
+            // Lệnh sắp xếp order_index để cố định vị trí hạng mục
+            const { data: tasks } = await supabaseClient.from('employee_kpis').select('*, subtasks(*)').in('id', taskIds).order('created_at', { ascending: false }).order('order_index', { foreignTable: 'subtasks', ascending: true });
 
             let html = '';
             tasks.forEach(t => {
+                let statusInfo = getDeadlineStatus(t.due_date, t.progress); // Gọi hàm lấy màu
+
                 let subtasksHtml = t.subtasks.map(s => `
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="checkbox" ${s.is_completed ? 'checked' : ''} onchange="toggleSubtask('${s.id}', this.checked)" id="sub_${s.id}" style="transform: scale(1.2);">
-                        <label class="form-check-label text-white fw-medium ms-2 ${s.is_completed ? 'text-decoration-line-through text-muted' : ''}" for="sub_${s.id}">
-                            ${s.title}
-                        </label>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-white small fw-medium">${s.title}</span>
+                            <span class="text-info small fw-bold" id="sub_val_${s.id}">${s.progress || 0}%</span>
+                        </div>
+                        <input type="range" class="form-range" style="height: 6px;" min="0" max="100" value="${s.progress || 0}" 
+                               oninput="document.getElementById('sub_val_${s.id}').innerText = this.value + '%'"
+                               onchange="updateSubtaskProgress('${s.id}', this.value)">
                     </div>
                 `).join('');
 
                 html += `
-                <div class="p-3 mb-3 rounded-3 text-white shadow-sm" style="background: #1a1d20; border-left: 4px solid ${t.progress === 100 ? '#198754' : '#0ea5e9'}; border: 1px solid #2b3035;">
+                <div class="p-3 mb-3 rounded-3 text-white shadow-sm" style="background: #1a1d20; border-left: 5px solid ${statusInfo.hex}; border-right: 1px solid #2b3035; border-top: 1px solid #2b3035; border-bottom: 1px solid #2b3035;">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="fw-bold fs-5 text-white">${t.task_name}</span>
-                        <span class="badge bg-dark text-info border border-info fw-bold px-2 py-1">${t.progress}%</span>
+                        <span class="badge bg-${statusInfo.color} fw-bold px-2 py-1">${t.progress}%</span>
                     </div>
-                    <div class="small text-warning mb-3 fw-semibold">
-                        ⏱ Bắt đầu: ${t.start_date ? new Date(t.start_date).toLocaleString() : 'Không có'} &nbsp;|&nbsp; 
-                        🏁 Hạn chót: ${t.due_date ? new Date(t.due_date).toLocaleString() : 'Không có'}
+                    <div class="small text-${statusInfo.color} mb-3 fw-bold">
+                        <i class="bi bi-clock-history me-1"></i> Trạng thái: ${statusInfo.text} <br>
+                        <span class="text-white-50 fw-normal">🏁 Hạn chót: ${t.due_date ? new Date(t.due_date).toLocaleString() : 'Không có'}</span>
                     </div>
 
                     <div class="p-3 rounded mb-3 bg-black bg-opacity-50 border border-secondary">
-                        <div class="text-info fw-bold small mb-2"><i class="bi bi-list-check me-1"></i> CÁC HẠNG MỤC CÔNG VIỆC:</div>
+                        <div class="text-info fw-bold small mb-3"><i class="bi bi-sliders me-1"></i> TIẾN ĐỘ TỪNG HẠNG MỤC:</div>
                         ${subtasksHtml || '<span class="text-muted small">Không có hạng mục chi tiết.</span>'}
                     </div>
 
-                    <!-- KHUNG BÁO CÁO TIẾN ĐỘ ĐỊNH KỲ TRONG NGÀY -->
-                    <div class="p-3 rounded mb-3" style="background: rgba(14, 165, 233, 0.05); border: 1px dashed #0ea5e9;">
-                        <div class="text-info fw-bold small mb-2"><i class="bi bi-clock-history me-1"></i> BÁO CÁO TIẾN ĐỘ ĐỊNH KỲ:</div>
-                        <div class="row g-2">
-                            <div class="col-6">
-                                <select id="slot_${t.id}" class="form-control text-white form-select form-select-sm" style="${customInputStyle}">
-                                    <option value="Đầu buổi sáng">☀️ Đầu buổi sáng</option>
-                                    <option value="Cuối buổi sáng">🌤️ Cuối buổi sáng</option>
-                                    <option value="Đầu buổi chiều">🌥️ Đầu buổi chiều</option>
-                                    <option value="Cuối buổi chiều">🌙 Cuối buổi chiều</option>
-                                </select>
-                            </div>
-                            <div class="col-6">
-                                <input type="number" id="prog_${t.id}" class="form-control text-white form-control-sm" style="${customInputStyle}" placeholder="Nhập % (0-100)" min="0" max="100" value="${t.progress}">
-                            </div>
+                    <!-- KHUNG TRAO ĐỔI / GIẢI TRÌNH CHAT CỦA NHÂN VIÊN -->
+                    <div class="p-3 rounded bg-black bg-opacity-50 border border-secondary mb-3">
+                        <div class="text-info fw-bold small mb-2"><i class="bi bi-chat-dots-fill me-1"></i> TRAO ĐỔI & GIẢI TRÌNH:</div>
+                        <div id="comments_box_${t.id}" class="mb-2 custom-scrollbar" style="max-height: 120px; overflow-y: auto;"></div>
+                        <div class="input-group input-group-sm">
+                            <input type="text" id="comment_input_${t.id}" class="form-control text-white bg-dark border-secondary" placeholder="Nhập giải trình lý do chậm, trao đổi...">
+                            <button onclick="sendTaskComment('${t.id}')" class="btn btn-outline-info fw-bold">GỬI</button>
                         </div>
-                        <div class="mt-2">
-                            <input type="text" id="note_${t.id}" class="form-control text-white form-control-sm" style="${customInputStyle}" placeholder="Ghi chú chi tiết công việc đã làm...">
-                        </div>
-                        <button onclick="submitPeriodicReport('${t.id}')" class="btn btn-outline-info btn-sm w-100 fw-bold mt-2">GỬI BÁO CÁO CẬP NHẬT</button>
                     </div>
 
-                    <div class="progress" style="height: 6px;"><div class="progress-bar ${t.progress === 100 ? 'bg-success' : 'bg-info'}" style="width: ${t.progress}%"></div></div>
+                    <div class="progress" style="height: 8px;"><div class="progress-bar bg-${statusInfo.color}" style="width: ${t.progress}%"></div></div>
                 </div>`;
+
+                // GỌI TẢI COMMENT SAU KHI VẼ XONG GIAO DIỆN
+                setTimeout(() => loadTaskComments(t.id), 100);
             });
             document.getElementById('myTasksContainer').innerHTML = html;
         }
 
-        // Gửi báo cáo định kỳ theo các mốc thời gian
+        // Tự động tính trung bình cộng các hạng mục lên thanh tiến độ chính
+        async function updateSubtaskProgress(subtaskId, newProgressValue) {
+            let pVal = parseInt(newProgressValue);
+            
+            // 1. Cập nhật tiến độ của chính hạng mục đó
+            const { error: err1 } = await supabaseClient.from('subtasks').update({ progress: pVal, is_completed: pVal === 100 }).eq('id', subtaskId);
+            if (err1) alert("Lỗi cập nhật hạng mục: " + err1.message);
+
+            // 2. Kéo tất cả hạng mục của công việc này về để tính trung bình cộng
+            const { data: subData } = await supabaseClient.from('subtasks').select('task_id').eq('id', subtaskId).single();
+            if (!subData) return;
+            const taskId = subData.task_id;
+            
+            const { data: allSubs } = await supabaseClient.from('subtasks').select('progress').eq('task_id', taskId);
+            
+            if(allSubs && allSubs.length > 0) {
+                let totalProgress = 0;
+                allSubs.forEach(s => totalProgress += (s.progress || 0));
+                let overallPercent = Math.round(totalProgress / allSubs.length); // Tính trung bình
+                let status = overallPercent === 100 ? 'Hoàn thành' : 'Đang làm';
+
+                // 3. Cập nhật tiến độ tổng thể của công việc
+                const { error: err2 } = await supabaseClient.from('employee_kpis').update({ progress: overallPercent, status: status }).eq('id', taskId);
+                if (err2) alert("Lỗi cập nhật tiến độ tổng: " + err2.message);
+            }
+            loadMyProfessionalTasks(); // Tải lại để cập nhật màu sắc
+        }
+                    // Gửi báo cáo định kỳ theo các mốc thời gian
         async function submitPeriodicReport(taskId) {
             let slot = document.getElementById(`slot_${taskId}`).value;
             let percent = parseInt(document.getElementById(`prog_${taskId}`).value);
@@ -414,11 +657,57 @@
             loadMyProfessionalTasks();
         }
 
-        // Hàm Điểm danh (Nhân viên)
+        // ================= GIAO DIỆN NHÂN VIÊN CHUYÊN NGHIỆP =================
+        function renderEmployeeView() {
+            document.getElementById('employeeView').classList.remove('d-none');
+            
+            document.getElementById('employeeKpiList').innerHTML = `
+                <h6 class="text-info fw-bold mb-3"><i class="bi bi-journal-check me-2"></i>CÔNG VIỆC ĐƯỢC GIAO CỦA TÔI</h6>
+                <div id="myTasksContainer">Đang tải công việc...</div>
+            `;
+            
+            loadMyProfessionalTasks();
+            checkAttendanceStatus(); // Kiểm tra xem hôm nay điểm danh chưa để vẽ nút bấm
+        }
+
+        async function checkAttendanceStatus() {
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            
+            const { data } = await supabaseClient.from('attendance')
+                .select('*')
+                .eq('employee_id', currentUser.id)
+                .gte('created_at', today.toISOString())
+                .limit(1);
+
+            let footer = document.getElementById('footerControls');
+            
+            if(data && data.length > 0) {
+                // ĐÃ ĐIỂM DANH: Nút màu xanh, khóa lại, hiện giờ
+                let time = new Date(data[0].created_at).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'});
+                footer.innerHTML = `
+                    <button class="btn py-3 fw-bold flex-grow-1 text-white bg-success border-0 border-end border-secondary rounded-0" disabled>
+                        <i class="bi bi-check-circle-fill me-2 fs-5"></i> ĐÃ ĐIỂM DANH LÚC ${time}
+                    </button>
+                    <button onclick="handleLogout()" class="btn py-3 fw-bold flex-grow-1 text-danger bg-dark border-0 rounded-0"><i class="bi bi-box-arrow-right me-2 fs-5"></i> THOÁT</button>
+                `;
+            } else {
+                // CHƯA ĐIỂM DANH: Hiện nút bấm bình thường
+                footer.innerHTML = `
+                    <button onclick="checkIn()" class="btn py-3 fw-bold flex-grow-1 text-success bg-dark border-0 border-end border-secondary rounded-0">
+                        <i class="bi bi-geo-alt-fill me-2 fs-5"></i> ĐIỂM DANH HÔM NAY
+                    </button>
+                    <button onclick="handleLogout()" class="btn py-3 fw-bold flex-grow-1 text-danger bg-dark border-0 rounded-0"><i class="bi bi-box-arrow-right me-2 fs-5"></i> THOÁT</button>
+                `;
+            }
+        }
+
         async function checkIn() {
             const { error } = await supabaseClient.from('attendance').insert([{ employee_id: currentUser.id }]);
             if(error) alert("❌ Điểm danh lỗi: " + error.message);
-            else alert("✅ ĐIỂM DANH THÀNH CÔNG!\nChúc bạn một ngày làm việc hiệu quả!");
+            else {
+                checkAttendanceStatus(); // Đổi màu nút thành xanh lá ngay lập tức
+            }
         }
 
         // Hàm cập nhật tiến độ (Nhân viên)
@@ -441,6 +730,165 @@
             await supabaseClient.auth.signOut();
             window.location.href = "index.html";
         }
+    // ================= TÍNH NĂNG XÓA CÔNG VIỆC BẰNG GIAO DIỆN MỚI =================
+        function deleteTask(taskId) {
+            // Hiển thị cái bảng màu đỏ đẹp thay vì alert xấu xí
+            document.getElementById('deleteTaskId').value = taskId;
+            document.getElementById('deleteModal').classList.remove('d-none');
+        }
+
+        async function confirmDeleteTask() {
+            let taskId = document.getElementById('deleteTaskId').value;
+            const { error } = await supabaseClient.from('employee_kpis').delete().eq('id', taskId);
+            
+            if (error) {
+                alert("❌ Lỗi khi xóa: " + error.message);
+            } else {
+                document.getElementById('deleteModal').classList.add('d-none');
+                loadAllTasksAdmin(); // Tải lại trang sau khi xóa
+            }
+        }
+
+        // ================= TÍNH NĂNG SỬA CÔNG VIỆC AN TOÀN =================
+        async function editTask(taskId) {
+            try {
+                const { data, error } = await supabaseClient.from('employee_kpis').select('*').eq('id', taskId).single();
+                if (error) throw error;
+                
+                if (data) {
+                    document.getElementById('editTaskId').value = data.id;
+                    document.getElementById('editTaskName').value = data.task_name;
+                    
+                    if (data.due_date) {
+                        let d = new Date(data.due_date);
+                        d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); 
+                        document.getElementById('editTaskDue').value = d.toISOString().slice(0,16);
+                    } else {
+                        document.getElementById('editTaskDue').value = '';
+                    }
+
+                    // Mở bảng Sửa
+                    document.getElementById('editModal').classList.remove('d-none');
+                }
+            } catch (err) {
+                console.error("Lỗi nút sửa:", err);
+                alert("Không thể tải thông tin công việc: " + err.message);
+            }
+        }
+
+        async function saveEditTask() {
+            let id = document.getElementById('editTaskId').value;
+            let newName = document.getElementById('editTaskName').value.trim();
+            let newDue = document.getElementById('editTaskDue').value;
+
+            if (!newName) return alert("Tên công việc không được để trống!");
+
+            const { error } = await supabaseClient.from('employee_kpis').update({
+                task_name: newName,
+                due_date: newDue ? new Date(newDue).toISOString() : null
+            }).eq('id', id);
+
+            if (error) {
+                alert("❌ Lỗi khi lưu: " + error.message);
+            } else {
+                document.getElementById('editModal').classList.add('d-none');
+                loadAllTasksAdmin(); 
+            }
+        }
+    
+        // Tải danh sách tin nhắn trao đổi của một công việc
+        async function loadTaskComments(taskId) {
+            const { data: comments } = await supabaseClient.from('task_comments')
+                .select('*, profiles(full_name, role)')
+                .eq('task_id', taskId)
+                .order('created_at', { ascending: true });
+
+            let container = document.getElementById(`comments_box_${taskId}`);
+            if (!container) return;
+
+            let html = '';
+            if (comments && comments.length > 0) {
+                comments.forEach(c => {
+                    let isAdmin = c.profiles.role === 'admin';
+                    let bgStyle = isAdmin ? 'background: rgba(14, 165, 233, 0.1); border-left: 3px solid #0ea5e9;' : 'background: rgba(255, 255, 255, 0.05); border-left: 3px solid #f59e0b;';
+                    let timeStr = new Date(c.created_at).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'});
+                    
+                    html += `
+                    <div class="p-2 mb-2 rounded small" style="${bgStyle}">
+                        <div class="d-flex justify-content-between text-white-50 mb-1" style="font-size: 0.75rem;">
+                            <span class="fw-bold ${isAdmin ? 'text-info' : 'text-warning'}">${c.profiles.full_name} (${isAdmin ? 'Giám đốc' : 'Nhân sự'})</span>
+                            <span>${timeStr}</span>
+                        </div>
+                        <div class="text-white">${c.message}</div>
+                    </div>`;
+                });
+            } else {
+                html += '<div class="text-muted small fst-italic mb-2">Chưa có trao đổi nào. Hãy để lại giải trình hoặc phản hồi tại đây...</div>';
+            }
+            container.innerHTML = html;
+            container.scrollTop = container.scrollHeight; // Cuộn xuống tin nhắn mới nhất
+        }
+
+        // Gửi tin nhắn giải trình/phản hồi
+        async function sendTaskComment(taskId) {
+            let inputElem = document.getElementById(`comment_input_${taskId}`);
+            let messageText = inputElem.value.trim();
+            if (!messageText) return;
+
+            const { error } = await supabaseClient.from('task_comments').insert([{
+                task_id: taskId,
+                sender_id: currentUser.id,
+                message: messageText
+            }]);
+
+            if (error) {
+                alert("Lỗi gửi tin nhắn: " + error.message);
+            } else {
+                inputElem.value = '';
+                loadTaskComments(taskId); // Tải lại khung chat ngay lập tức
+            }
+        }
     </script>
+    <!-- ========================================== -->
+    <!-- 1. BẢNG SỬA CÔNG VIỆC CHUYÊN NGHIỆP        -->
+    <!-- ========================================== -->
+    <div id="editModal" class="d-none" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 999999;">
+        <div class="p-4 rounded-4 shadow-lg bg-dark" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 500px; border: 1px solid #0ea5e9;">
+            <h5 class="text-info fw-bold mb-3"><i class="bi bi-pencil-square me-2"></i>SỬA THÔNG TIN CÔNG VIỆC</h5>
+            <input type="hidden" id="editTaskId">
+            
+            <div class="mb-3">
+                <label class="text-white small fw-bold mb-1">Tên công việc</label>
+                <input type="text" id="editTaskName" class="form-control text-white" style="background: #121416; border: 1px solid #2b3035;">
+            </div>
+            
+            <div class="mb-4">
+                <label class="text-white small fw-bold mb-1">Hạn chót mới</label>
+                <input type="datetime-local" id="editTaskDue" class="form-control text-white" style="background: #121416; border: 1px solid #2b3035;">
+            </div>
+            
+            <div class="d-flex gap-2">
+                <button onclick="saveEditTask()" class="btn btn-info flex-grow-1 fw-bold text-dark">LƯU THAY ĐỔI</button>
+                <button onclick="document.getElementById('editModal').classList.add('d-none')" class="btn btn-secondary flex-grow-1 fw-bold">HỦY BỎ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 2. BẢNG CẢNH BÁO XÓA CÔNG VIỆC CỰC ĐẸP     -->
+    <!-- ========================================== -->
+    <div id="deleteModal" class="d-none" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 999999;">
+        <div class="p-4 rounded-4 shadow-lg bg-dark text-center" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 400px; border: 1px solid #ef4444;">
+            <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 3.5rem;"></i>
+            <h4 class="text-white fw-bold mt-2 mb-2">CẢNH BÁO XÓA</h4>
+            <p class="text-white-50 small mb-4">Bạn có chắc chắn muốn xóa công việc này?<br>Toàn bộ hạng mục con, nhân sự phân công và dữ liệu tiến độ sẽ bị xóa vĩnh viễn!</p>
+            <input type="hidden" id="deleteTaskId">
+            
+            <div class="d-flex gap-2">
+                <button onclick="confirmDeleteTask()" class="btn btn-danger flex-grow-1 fw-bold py-2">XÓA NGAY</button>
+                <button onclick="document.getElementById('deleteModal').classList.add('d-none')" class="btn btn-secondary flex-grow-1 fw-bold py-2">HỦY BỎ</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
