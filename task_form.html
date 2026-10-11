@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
-    <!-- THƯ VIỆN LỊCH FLATPICKR (Dark Mode + Tiếng Việt) -->
+    <!-- THƯ VIỆN LỊCH FLATPICKR -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -19,18 +19,13 @@
         .custom-scrollbar::-webkit-scrollbar { display: none !important; }
         .custom-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* Input sáng hơn */
         .custom-input { background-color: #121416 !important; border: 1px solid #3f3f46 !important; color: #ffffff !important; border-radius: 8px; padding: 12px 15px; font-weight: 500; }
         .custom-input:focus { border-color: #0ea5e9 !important; box-shadow: 0 0 0 0.25rem rgba(14, 165, 233, 0.25) !important; }
 
-        /* MÀU NÚT MENU ĐANG CHỌN (DÙNG CHUNG CHO CẢ MÁY TÍNH & ĐIỆN THOẠI) */
         .nav-menu-btn.active-nav { background-color: #0ea5e9 !important; color: #000 !important; border-color: #0ea5e9 !important; opacity: 1 !important; }
         .nav-menu-btn { transition: all 0.2s; }
 
-        /* MENU MOBILE 1 DÒNG SIÊU GỌN */
         @media (max-width: 767px) {
-            .mobile-px-half { padding-left: 0.5px !important; padding-right: 0.5px !important; }
-            .mobile-margin-0 { margin-left: 0 !important; margin-right: 0 !important; }
             .nav-menu-text { display: none; }
             .nav-menu-btn { background: transparent !important; border: 1px solid rgba(255,255,255,0.2) !important; color: #fff !important; padding: 6px 12px !important; border-radius: 8px; font-size: 1.1rem; opacity: 1 !important; }
             #headerTitle { font-size: 0.7rem !important; white-space: normal !important; overflow: visible !important; line-height: 1.3; text-align: left; }
@@ -40,15 +35,12 @@
 <body>
     <div class="position-fixed top-0 start-0 w-100 h-100 d-flex flex-column animate__animated animate__fadeIn" style="background: #000; z-index: 99999; overflow-x: hidden;">
         
-        <!-- HEADER & MENU TÍCH HỢP 1 DÒNG -->
+        <!-- HEADER -->
         <div class="d-flex p-2 border-bottom border-secondary bg-dark align-items-center sticky-top justify-content-between shadow-sm flex-shrink-0" style="z-index: 1020; padding-top: max(env(safe-area-inset-top), 0.5rem) !important;">
-            <!-- Trái: Nút Quay Lại & Lời Chào -->
             <div class="d-flex align-items-center overflow-hidden pe-1">
                 <button onclick="window.location.href='dashboard.html'" class="btn btn-sm text-white-50 p-1 bg-transparent border-0 shadow-none me-1" title="Quay lại"><i class="bi bi-arrow-left fs-4"></i></button>
                 <div class="text-info fw-bold" id="headerTitle" style="font-size: 1rem; line-height: 1.2;">ĐANG TẢI...</div>
             </div>
-            
-            <!-- Phải: 4 Nút Menu -->
             <div class="d-flex gap-1 gap-md-2 flex-shrink-0">
                 <button onclick="window.location.href='dashboard.html'" class="btn btn-sm nav-menu-btn btn-outline-light fw-bold text-nowrap"><i class="bi bi-house-door"></i><span class="nav-menu-text ms-1">TỔNG QUAN</span></button>
                 <button onclick="window.location.href='task_form.html'" class="btn btn-sm active-nav nav-menu-btn fw-bold text-nowrap"><i class="bi bi-clipboard-plus"></i><span class="nav-menu-text ms-1">GIAO VIỆC</span></button>
@@ -58,9 +50,7 @@
         </div>
 
         <div class="flex-grow-1 overflow-auto custom-scrollbar p-0">
-
-            <!-- NỘI DUNG FULL MÀN HÌNH -->
-            <div class="p-3 w-100">
+            <div class="p-3 w-100 mx-auto" style="max-width: 800px;">
                 <h4 id="pageTitle" class="text-info fw-bold mb-4"><i class="bi bi-journal-plus me-2"></i>TẠO CÔNG VIỆC MỚI</h4>
                 <input type="hidden" id="taskId">
                 
@@ -87,20 +77,25 @@
                     </div>
                 </div>
 
-                <div id="createOnlySection">
-                    <div class="mb-4">
-                        <label class="fw-bold small mb-2 text-info">GIAO CHO NHÂN SỰ</label>
-                        <div id="employeeList" class="p-3 rounded-3 custom-scrollbar" style="background: #121416; border: 1px solid #3f3f46; max-height: 200px; overflow-y: auto;">Đang tải...</div>
+                <div class="mb-4">
+                    <label class="fw-bold small mb-2 text-info">NHÂN SỰ THỰC HIỆN</label>
+                    <div id="employeeList" class="p-3 rounded-3 custom-scrollbar" style="background: #121416; border: 1px solid #3f3f46; max-height: 200px; overflow-y: auto;">Đang tải...</div>
+                </div>
+
+                <!-- KHU VỰC QUẢN LÝ HẠNG MỤC -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-end mb-2">
+                        <label class="fw-bold small text-info mb-0">HẠNG MỤC CÔNG VIỆC</label>
+                        <button type="button" onclick="addEmptySubtaskLine()" class="btn btn-sm btn-outline-info rounded-pill px-3 py-1 fw-bold"><i class="bi bi-plus-lg me-1"></i>Thêm dòng</button>
                     </div>
-                    <div class="mb-4">
-                        <label class="fw-bold small mb-2 text-info">CÁC HẠNG MỤC (Mỗi dòng 1 hạng mục)</label>
-                        <textarea id="subtasks" class="form-control custom-input" rows="5" placeholder="- Phân tích thị trường&#10;- Lên báo cáo tài chính..."></textarea>
+                    <div id="subtaskContainer" class="p-3 rounded-3" style="background: #121416; border: 1px solid #3f3f46;">
+                        <!-- Các hạng mục sẽ được sinh ra ở đây -->
                     </div>
                 </div>
 
-                <div id="editOnlySection" class="d-none mb-4">
+                <div id="editLogSection" class="d-none mb-4">
                     <label class="fw-bold small mb-2 text-warning"><i class="bi bi-exclamation-triangle-fill me-1"></i>NHẬT KÝ SỬA ĐỔI</label>
-                    <input type="text" id="editNote" class="form-control custom-input border-warning" placeholder="Nhập lý do thay đổi để lưu vết...">
+                    <input type="text" id="editNote" class="form-control custom-input border-warning" placeholder="Nhập lý do thay đổi công việc...">
                 </div>
 
                 <button id="submitBtn" onclick="saveTask()" class="btn btn-info w-100 fw-bold py-3 mt-2 text-dark fs-5 shadow-lg mb-5">PHÁT HÀNH CÔNG VIỆC</button>
@@ -115,8 +110,9 @@
 
         let currentUser = null;
         let isEditMode = false;
-
-        let fpStart, fpDue; // Khai báo biến điều khiển lịch
+        let fpStart, fpDue; 
+        
+        let subtaskCount = 0; // Biến đếm số lượng hạng mục đang hiển thị trên form
 
         document.addEventListener("DOMContentLoaded", async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
@@ -126,23 +122,25 @@
             const { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).single();
             if(profile) document.getElementById('headerTitle').innerText = profile.full_name.toUpperCase();
 
-            // Cấu hình hiển thị Lịch chuẩn dd/mm/yyyy
             const fpConfig = { 
                 enableTime: true, time_24hr: true, locale: "vn",
-                dateFormat: "Y-m-d\\TH:i", // Giữ format gốc ẩn bên dưới để hệ thống tính toán
-                altInput: true, altFormat: "d/m/Y H:i" // Hiển thị chuẩn dd/mm/yyyy ra ngoài cho người dùng
+                dateFormat: "Y-m-d\\TH:i", altInput: true, altFormat: "d/m/Y H:i"
             };
             fpStart = flatpickr("#startDate", fpConfig);
             fpDue = flatpickr("#dueDate", fpConfig);
 
-            // Set mặc định Bắt đầu là hiện tại
             let now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
             fpStart.setDate(now.toISOString().slice(0,16));
 
             const urlParams = new URLSearchParams(window.location.search);
             const editId = urlParams.get('id');
 
-            if (editId) { isEditMode = true; setupEditMode(editId); } else { setupCreateMode(); }
+            if (editId) { 
+                isEditMode = true; 
+                setupEditMode(editId); 
+            } else { 
+                setupCreateMode(); 
+            }
         });
 
         function calculateDueDate() {
@@ -152,27 +150,66 @@
             
             let d = new Date(startVal);
             d.setDate(d.getDate() + days);
-            fpDue.setDate(d.toISOString().slice(0,16)); // Cập nhật lại giao diện lịch
+            fpDue.setDate(d.toISOString().slice(0,16));
         }
 
+        // --- QUẢN LÝ HẠNG MỤC TRÊN GIAO DIỆN FORM ---
+        function addEmptySubtaskLine(id = '', title = '', progress = 0) {
+            subtaskCount++;
+            const container = document.getElementById('subtaskContainer');
+            
+            const div = document.createElement('div');
+            div.className = 'd-flex align-items-center mb-2 animate__animated animate__fadeIn';
+            div.id = `row_subtask_${subtaskCount}`;
+            
+            // Nếu là dòng có id thực từ DB, ta giấu id vào input hidden, hiện % báo cáo
+            let badgeHtml = '';
+            if (id) {
+                let colorClass = progress === 100 ? 'bg-success' : (progress > 0 ? 'bg-warning' : 'bg-secondary');
+                badgeHtml = `<span class="badge ${colorClass} ms-2" style="width: 50px;">${progress}%</span>`;
+            }
+
+            div.innerHTML = `
+                <input type="hidden" class="st-id" value="${id}">
+                <input type="hidden" class="st-progress" value="${progress}">
+                <div class="input-group">
+                    <span class="input-group-text bg-dark text-white-50 border-secondary"><i class="bi bi-list-task"></i></span>
+                    <input type="text" class="form-control custom-input border-start-0 st-title" placeholder="Tên hạng mục chi tiết..." value="${title}">
+                    <button type="button" onclick="removeSubtaskLine('${div.id}')" class="btn btn-outline-danger border-secondary" title="Xóa dòng"><i class="bi bi-trash"></i></button>
+                </div>
+                ${badgeHtml}
+            `;
+            container.appendChild(div);
+        }
+
+        function removeSubtaskLine(rowId) {
+            document.getElementById(rowId).remove();
+        }
+
+        // --- KHỞI TẠO CHẾ ĐỘ TẠO MỚI ---
         async function setupCreateMode() {
             document.getElementById('pageTitle').innerHTML = "<i class='bi bi-journal-plus me-2'></i>TẠO CÔNG VIỆC MỚI";
-            const { data: employees } = await supabaseClient.from('profiles').select('*').neq('role', 'admin').order('full_name', { ascending: true });
+            const { data: employees } = await supabaseClient.from('profiles').select('*').in('role', ['employee', 'pho_phong', 'truong_phong']).order('full_name', { ascending: true });
+            
             let empHtml = employees ? employees.map(e => `
-                <div class="form-check text-white mb-3 d-flex align-items-center">
-                    <input class="form-check-input emp-checkbox me-2" type="checkbox" value="${e.id}" id="emp_${e.id}" style="width: 20px; height: 20px;">
+                <div class="form-check text-white mb-2 d-flex align-items-center">
+                    <input class="form-check-input emp-checkbox me-2" type="checkbox" value="${e.id}" id="emp_${e.id}" style="width: 18px; height: 18px;">
                     <label class="form-check-label fw-bold fs-6" for="emp_${e.id}">${e.full_name}</label>
                 </div>`).join('') : 'Không có dữ liệu';
             document.getElementById('employeeList').innerHTML = empHtml;
+
+            // Giao diện Tạo mới: Cho sẵn 3 dòng trống để nhập
+            addEmptySubtaskLine(); addEmptySubtaskLine(); addEmptySubtaskLine();
         }
 
+        // --- KHỞI TẠO CHẾ ĐỘ CHỈNH SỬA (KÉO TOÀN BỘ DATA CŨ LÊN) ---
         async function setupEditMode(id) {
             document.getElementById('pageTitle').innerHTML = "<i class='bi bi-pencil-square me-2 text-warning'></i>CHỈNH SỬA CÔNG VIỆC";
-            document.getElementById('submitBtn').innerText = "LƯU THAY ĐỔI & GHI NHẬT KÝ";
+            document.getElementById('submitBtn').innerText = "CẬP NHẬT CÔNG VIỆC";
             document.getElementById('submitBtn').classList.replace('btn-info', 'btn-warning');
-            document.getElementById('createOnlySection').classList.add('d-none'); 
-            document.getElementById('editOnlySection').classList.remove('d-none'); 
+            document.getElementById('editLogSection').classList.remove('d-none'); 
 
+            // 1. Kéo dữ liệu Công việc gốc
             const { data: task } = await supabaseClient.from('employee_kpis').select('*').eq('id', id).single();
             if (task) {
                 document.getElementById('taskId').value = task.id;
@@ -180,40 +217,106 @@
                 
                 if (task.start_date) {
                     let sd = new Date(task.start_date); sd.setMinutes(sd.getMinutes() - sd.getTimezoneOffset());
-                    fpStart.setDate(sd.toISOString().slice(0,16)); // Dùng lịch để set
+                    fpStart.setDate(sd.toISOString().slice(0,16));
                 }
                 if (task.due_date) {
                     let dd = new Date(task.due_date); dd.setMinutes(dd.getMinutes() - dd.getTimezoneOffset());
-                    fpDue.setDate(dd.toISOString().slice(0,16)); // Dùng lịch để set
+                    fpDue.setDate(dd.toISOString().slice(0,16));
                 }
+            }
+
+            // 2. Kéo danh sách Nhân sự, tick sẵn những người đang làm
+            const { data: assignedEmps } = await supabaseClient.from('task_assignees').select('employee_id').eq('task_id', id);
+            let assignedIds = assignedEmps ? assignedEmps.map(a => a.employee_id) : [];
+
+            const { data: employees } = await supabaseClient.from('profiles').select('*').in('role', ['employee', 'pho_phong', 'truong_phong']).order('full_name', { ascending: true });
+            let empHtml = employees ? employees.map(e => {
+                let isChecked = assignedIds.includes(e.id) ? 'checked' : '';
+                return `
+                <div class="form-check text-white mb-2 d-flex align-items-center">
+                    <input class="form-check-input emp-checkbox me-2" type="checkbox" value="${e.id}" id="emp_${e.id}" style="width: 18px; height: 18px;" ${isChecked}>
+                    <label class="form-check-label fw-bold fs-6" for="emp_${e.id}">${e.full_name}</label>
+                </div>`;
+            }).join('') : 'Không có dữ liệu';
+            document.getElementById('employeeList').innerHTML = empHtml;
+
+            // 3. Kéo danh sách Hạng mục cũ hiển thị lên form
+            const { data: subtasks } = await supabaseClient.from('subtasks').select('*').eq('task_id', id).order('order_index', { ascending: true });
+            if (subtasks && subtasks.length > 0) {
+                subtasks.forEach(sub => {
+                    addEmptySubtaskLine(sub.id, sub.title, sub.progress || 0);
+                });
+            } else {
+                addEmptySubtaskLine(); // Chừa 1 dòng trống nếu k có gì
             }
         }
 
+        // --- LƯU THAY ĐỔI (XỬ LÝ LOGIC CỰC MẠNH) ---
         async function saveTask() {
             const name = document.getElementById('taskName').value.trim();
             const start = document.getElementById('startDate').value;
             const due = document.getElementById('dueDate').value;
 
             if (!name) return alert("Vui lòng nhập tên công việc!");
+            
+            const selectedEmps = Array.from(document.querySelectorAll('.emp-checkbox:checked')).map(cb => cb.value);
+            if (selectedEmps.length === 0) return alert("Vui lòng chọn nhân viên thực hiện!");
 
+            // Thu thập dữ liệu hạng mục từ các ô input hiện tại trên màn hình
+            let currentSubtasks = [];
+            let rows = document.getElementById('subtaskContainer').children;
+            for (let i = 0; i < rows.length; i++) {
+                let row = rows[i];
+                let id = row.querySelector('.st-id').value;
+                let title = row.querySelector('.st-title').value.trim();
+                let progress = parseInt(row.querySelector('.st-progress').value) || 0;
+                
+                if (title) { // Bỏ qua các dòng trống chưa gõ chữ
+                    currentSubtasks.push({ id: id, title: title, progress: progress, order_index: i });
+                }
+            }
+
+            // GIAO DIỆN EDIT (CẬP NHẬT)
             if (isEditMode) {
-                const id = document.getElementById('taskId').value;
+                const taskId = document.getElementById('taskId').value;
                 const note = document.getElementById('editNote').value.trim();
-                if (!note) return alert("Vui lòng nhập lý do/nhật ký chỉnh sửa!");
+                if (!note) return alert("Giám đốc vui lòng nhập lý do (Nhật ký) cho sự thay đổi này!");
 
-                await supabaseClient.from('employee_kpis').update({
-                    task_name: name, start_date: start ? new Date(start).toISOString() : null, due_date: due ? new Date(due).toISOString() : null
-                }).eq('id', id);
+                // 1. Cập nhật thông tin gốc
+                await supabaseClient.from('employee_kpis').update({ task_name: name, start_date: start ? new Date(start).toISOString() : null, due_date: due ? new Date(due).toISOString() : null }).eq('id', taskId);
 
-                await supabaseClient.from('task_edit_logs').insert([{ task_id: id, edited_by: currentUser.id, edit_note: note }]);
-                alert("✅ Sửa và ghi nhật ký thành công!");
+                // 2. Cập nhật Nhân sự (Xóa sạch cũ, thêm lại mới)
+                await supabaseClient.from('task_assignees').delete().eq('task_id', taskId);
+                let assigneeRows = selectedEmps.map(empId => ({ task_id: taskId, employee_id: empId }));
+                await supabaseClient.from('task_assignees').insert(assigneeRows);
+
+                // 3. Xử lý Hạng mục (Cập nhật cái cũ, Thêm cái mới. Những cái bị xóa trên màn hình sẽ bị bỏ qua)
+                // Xóa toàn bộ hạng mục cũ trong DB
+                await supabaseClient.from('subtasks').delete().eq('task_id', taskId);
+                
+                let subtaskInsertData = currentSubtasks.map(s => ({
+                    task_id: taskId, title: s.title, progress: s.progress, is_completed: s.progress === 100, order_index: s.order_index
+                }));
+                // Bơm lại dữ liệu chuẩn xác lên CSDL
+                if(subtaskInsertData.length > 0) {
+                    await supabaseClient.from('subtasks').insert(subtaskInsertData);
+                }
+
+                // 4. Tính toán lại % tổng của công việc
+                let totalProgress = 0;
+                currentSubtasks.forEach(s => totalProgress += s.progress);
+                let overallPercent = currentSubtasks.length > 0 ? Math.round(totalProgress / currentSubtasks.length) : 0;
+                let newStatus = overallPercent === 100 ? 'Hoàn thành' : 'Đang làm';
+                await supabaseClient.from('employee_kpis').update({ progress: overallPercent, status: newStatus }).eq('id', taskId);
+
+                // 5. Ghi Log
+                await supabaseClient.from('task_edit_logs').insert([{ task_id: taskId, edited_by: currentUser.id, edit_note: note }]);
+                
+                alert("✅ Sửa và đồng bộ công việc thành công!");
                 window.location.href = 'dashboard.html';
+
+            // GIAO DIỆN CREATE (TẠO MỚI)
             } else {
-                const selectedEmps = Array.from(document.querySelectorAll('.emp-checkbox:checked')).map(cb => cb.value);
-                const subtasksText = document.getElementById('subtasks').value.trim();
-
-                if (selectedEmps.length === 0) return alert("Vui lòng chọn nhân viên!");
-
                 const { data: taskData, error } = await supabaseClient.from('employee_kpis').insert([{
                     task_name: name, assigned_by: currentUser.id, start_date: start ? new Date(start).toISOString() : null, due_date: due ? new Date(due).toISOString() : null, progress: 0, status: 'Đang làm'
                 }]).select().single();
@@ -224,10 +327,11 @@
                 let assigneeRows = selectedEmps.map(empId => ({ task_id: taskId, employee_id: empId }));
                 await supabaseClient.from('task_assignees').insert(assigneeRows);
 
-                if (subtasksText) {
-                    let lines = subtasksText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-                    let subtaskRows = lines.map((line, idx) => ({ task_id: taskId, title: line, is_completed: false, progress: 0, order_index: idx }));
-                    await supabaseClient.from('subtasks').insert(subtaskRows);
+                let subtaskInsertData = currentSubtasks.map(s => ({
+                    task_id: taskId, title: s.title, progress: 0, is_completed: false, order_index: s.order_index
+                }));
+                if(subtaskInsertData.length > 0) {
+                    await supabaseClient.from('subtasks').insert(subtaskInsertData);
                 }
 
                 alert("✅ Tạo công việc thành công!");

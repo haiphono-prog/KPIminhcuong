@@ -49,6 +49,11 @@
         .dynamic-slider { -webkit-appearance: none; -moz-appearance: none; appearance: none; width: 100%; border-radius: 5px; outline: none; background: #2b3035; }
         .dynamic-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #ffffff; cursor: pointer; border: 2px solid #2b3035; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
         .dynamic-slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #ffffff; cursor: pointer; border: 2px solid #2b3035; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
+    /* HIỆU ỨNG THÔNG BÁO IPHONE (TOAST) & BẢNG TRƯỢT */
+        .ios-toast { position: fixed; top: 15px; left: 50%; transform: translateX(-50%) translateY(-150px); background: rgba(30, 30, 30, 0.85); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); padding: 12px 16px; border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.6); display: flex; align-items: center; gap: 12px; z-index: 9999999; transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); width: 90%; max-width: 400px; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; }
+        .ios-toast.show { transform: translateX(-50%) translateY(0); }
+        .slide-panel { position: fixed; top: 0; right: 0; height: 100%; width: 100%; max-width: 400px; background: #121416; z-index: 9999999; transform: translateX(100%); transition: transform 0.3s ease-in-out; border-left: 1px solid #3f3f46; display: flex; flex-direction: column; box-shadow: -10px 0 30px rgba(0,0,0,0.5); }
+        .slide-panel.open { transform: translateX(0); }
     </style>
 </head>
 <body>
@@ -68,16 +73,26 @@
             <div class="d-flex gap-1 gap-md-2 flex-shrink-0">
                 <button onclick="window.location.href='dashboard.html'" class="btn btn-sm active-nav nav-menu-btn fw-bold text-nowrap"><i class="bi bi-house-door"></i><span class="nav-menu-text ms-1">TỔNG QUAN</span></button>
                 
-                <!-- MENU CHO ADMIN (Sẽ tự hiện nếu là Sếp) -->
+                <!-- MENU CHO ADMIN -->
                 <div id="adminMenu" class="d-none gap-1 gap-md-2">
                     <button onclick="window.location.href='task_form.html'" class="btn btn-sm nav-menu-btn btn-outline-light fw-bold text-nowrap"><i class="bi bi-clipboard-plus"></i><span class="nav-menu-text ms-1">GIAO VIỆC</span></button>
                     <button onclick="window.location.href='accounts.html'" class="btn btn-sm nav-menu-btn btn-outline-light fw-bold text-nowrap"><i class="bi bi-people"></i><span class="nav-menu-text ms-1">PHÂN QUYỀN</span></button>
                     <button onclick="window.location.href='attendance.html'" class="btn btn-sm nav-menu-btn btn-outline-light fw-bold text-nowrap"><i class="bi bi-calendar-check"></i><span class="nav-menu-text ms-1">CHẤM CÔNG</span></button>
+                    <button onclick="openNotifications()" class="btn btn-sm nav-menu-btn btn-outline-danger fw-bold text-nowrap position-relative">
+                        <i class="bi bi-bell-fill"></i><span class="nav-menu-text ms-1">THÔNG BÁO</span>
+                        <!-- Chấm đỏ báo chưa đọc -->
+                        <span class="position-absolute top-0 start-100 translate-middle p-1 bg-warning border border-light rounded-circle d-none unread-badge" style="padding: 0.35rem !important;"></span>
+                    </button>
                 </div>
 
-                <!-- MENU CHO NHÂN VIÊN (Nút điểm danh sẽ lên đây) -->
+                <!-- MENU CHO NHÂN VIÊN -->
                 <div id="employeeMenu" class="d-none gap-1 gap-md-2">
                     <button id="topCheckInBtn" onclick="checkIn()" class="btn btn-sm nav-menu-btn btn-outline-success fw-bold text-nowrap text-success border-success"><i class="bi bi-geo-alt-fill"></i><span class="nav-menu-text ms-1">ĐIỂM DANH</span></button>
+                    <button onclick="openNotifications()" class="btn btn-sm nav-menu-btn btn-outline-danger fw-bold text-nowrap position-relative">
+                        <i class="bi bi-bell-fill"></i><span class="nav-menu-text ms-1">THÔNG BÁO</span>
+                        <!-- Chấm đỏ báo chưa đọc -->
+                        <span class="position-absolute top-0 start-100 translate-middle p-1 bg-warning border border-light rounded-circle d-none unread-badge" style="padding: 0.35rem !important;"></span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -128,6 +143,69 @@
         </div>
     </div>
 
+
+    <!-- iOS TOAST NOTIFICATION -->
+    <div id="iosToast" class="ios-toast" onclick="openNotifications()">
+        <div class="bg-danger text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 45px; height: 45px; flex-shrink: 0; box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);">
+            <i class="bi bi-bell-fill fs-4"></i>
+        </div>
+        <div class="overflow-hidden w-100">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <div class="fw-bold text-white text-truncate" id="toastTitle" style="font-size: 0.95rem;"></div>
+                <div class="text-white-50 small text-nowrap ms-2">Bây giờ</div>
+            </div>
+            <div class="text-white-50 text-truncate" id="toastDesc" style="font-size: 0.85rem;"></div>
+        </div>
+    </div>
+
+    <!-- BẢNG TRƯỢT THÔNG BÁO BÊN PHẢI -->
+    <div id="notificationPanel" class="slide-panel">
+        <div class="d-flex justify-content-between align-items-center p-3 border-bottom border-secondary bg-dark">
+            <h5 class="fw-bold text-info mb-0"><i class="bi bi-broadcast me-2"></i>TRUNG TÂM THÔNG BÁO</h5>
+            <button onclick="closeNotifications()" class="btn btn-sm btn-outline-light"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="flex-grow-1 overflow-auto custom-scrollbar p-3">
+            <!-- Form gửi thông báo cho Giám đốc -->
+            <div id="adminCreateAnnouncement" class="d-none mb-4 p-3 rounded-4" style="background: #1a1d20; border: 1px solid #2b3035;">
+                <h6 class="text-warning fw-bold small mb-2"><i class="bi bi-send-fill me-1"></i>PHÁT THÔNG BÁO MỚI</h6>
+                
+                <label class="text-white-50 small mb-1">Người nhận:</label>
+                <select id="annTarget" class="form-select bg-dark border-secondary text-white small mb-2 custom-input" style="font-size: 0.9rem;">
+                    <option value="all">🔊 Gửi Toàn công ty</option>
+                </select>
+
+                <input type="text" id="annTitle" class="form-control bg-dark border-secondary text-white mb-2 mt-2" placeholder="Tiêu đề...">
+                <textarea id="annContent" class="form-control bg-dark border-secondary text-white mb-2" rows="2" placeholder="Nội dung thông báo..."></textarea>
+                <button onclick="sendAnnouncement()" class="btn btn-info w-100 fw-bold text-dark shadow-sm">GỬI THÔNG BÁO</button>
+            </div>
+            
+            <div id="announcementList">Đang tải...</div>
+        </div>
+    </div>
+
+    <!-- BẢNG HỎI XÁC NHẬN ĐIỂM DANH -->
+    <div id="checkInModal" class="d-none" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 999999;">
+        <div class="w-100 h-100 d-flex align-items-center justify-content-center">
+            <div class="p-4 rounded-4 shadow-lg bg-dark text-center" style="width: 90%; max-width: 400px; border: 1px solid #10b981;">
+                <i class="bi bi-person-bounding-box text-success" style="font-size: 3.5rem;"></i>
+                <h4 class="text-white fw-bold mt-2 mb-2">XÁC NHẬN ĐIỂM DANH</h4>
+                <p class="text-white-50 small mb-4">Bạn đang thực hiện xác nhận cho <br><strong class="text-warning fs-5" id="checkInModalTitle">CA...</strong></p>
+                <input type="hidden" id="checkInType">
+                
+                <!-- Ô NHẬP LÝ DO NGHỈ -->
+                <div class="mb-3 text-start">
+                    <input type="text" id="checkInReason" class="form-control custom-input bg-dark border-secondary text-white" placeholder="Nhập lý do nếu bạn xin nghỉ...">
+                </div>
+
+                <div class="d-flex flex-column gap-2">
+                    <button onclick="confirmCheckIn('present')" class="btn btn-success fw-bold py-3"><i class="bi bi-geo-alt-fill me-2"></i>CÓ MẶT / ĐANG LÀM</button>
+                    <button onclick="confirmCheckIn('absent')" class="btn btn-outline-danger fw-bold py-2"><i class="bi bi-x-circle me-2"></i>BÁO NGHỈ CA NÀY</button>
+                    <button onclick="document.getElementById('checkInModal').classList.add('d-none')" class="btn btn-secondary fw-bold py-2 mt-2">HỦY BỎ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         const supabaseUrl = 'https://muzfjjyntqzsvwkwmors.supabase.co'; 
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11emZqanludHF6c3Z3a3dtb3JzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2MTAwNzgsImV4cCI6MjEwNzE4NjA3OH0.T8UcIVo6IwUssCGPNvXdeY5BFkGhjyR2GehTQJbgmkE';
@@ -142,16 +220,16 @@
         document.addEventListener("DOMContentLoaded", checkSession);
 
         async function checkSession() {
-            // 2. Dùng supabaseClient
             const { data: { session }, error } = await supabaseClient.auth.getSession();
-            
             if (!session) {
-                window.location.href = "index.html"; // Chưa đăng nhập thì đuổi về
+                window.location.href = "index.html";
                 return;
             }
-
             currentUser = session.user;
             await loadUserProfile();
+            
+            // Kích hoạt tai nghe thông báo cho toàn bộ nhân sự và giám đốc
+            setupGlobalRealtime(); 
         }
 
         async function loadUserProfile() {
@@ -544,7 +622,14 @@
                                 <i class="bi bi-clock-history me-1"></i> ${statusInfo.text} <br>
                                 <span class="text-white-50 fw-normal">🏁 Hạn chót: ${formatDateVN(t.due_date)}</span>
                             </div>
-                            <div class="p-2 rounded mb-2 bg-black bg-opacity-50 border border-secondary">${subtasksHtml || '<span class="text-muted small">Không có hạng mục chi tiết</span>'}</div>
+                            <div class="p-2 rounded mb-2 bg-black bg-opacity-50 border border-secondary">
+                                <div class="mb-2">${subtasksHtml || '<span class="text-muted small">Không có hạng mục chi tiết</span>'}</div>
+                                <!-- Ô nhập liệu thêm hạng mục siêu tốc cho Giám đốc -->
+                                <div class="input-group input-group-sm border-top border-secondary pt-2">
+                                    <input type="text" id="new_subtask_${t.id}" class="form-control bg-dark text-white border-secondary" placeholder="+ Giao thêm hạng mục mới..." onkeypress="if(event.key === 'Enter') addNewSubtask('${t.id}')">
+                                    <button onclick="addNewSubtask('${t.id}')" class="btn btn-outline-success fw-bold">THÊM</button>
+                                </div>
+                            </div>
                             
                             <!-- KHUNG TRAO ĐỔI -->
                             <div class="p-3 rounded bg-black bg-opacity-50 border border-secondary mt-3 mb-3">
@@ -568,39 +653,48 @@
             document.getElementById('allTasksContainer').innerHTML = allTasksHtml;
         }
 
-            // Tải danh sách điểm danh trong ngày hôm nay
+            // Tải danh sách điểm danh trong ngày hôm nay (Phiên bản 4 ca/ngày)
         async function loadAttendanceAdmin() {
             const { data: employees } = await supabaseClient.from('profiles').select('*').eq('role', 'employee');
             
+            // Khóa chặt múi giờ chuẩn VN để tránh lỗi mất người điểm danh
             const today = new Date();
-            today.setHours(0,0,0,0);
+            const vnTime = new Date(today.getTime() - (today.getTimezoneOffset() * 60000));
+            vnTime.setUTCHours(0,0,0,0);
             
             const { data: attendance } = await supabaseClient.from('attendance')
                 .select('*')
-                .gte('created_at', today.toISOString());
+                .gte('created_at', vnTime.toISOString());
 
             let html = '';
             if (employees) {
                 employees.forEach(emp => {
-                    let checkInRecord = attendance ? attendance.find(a => a.employee_id === emp.id) : null;
-                    if(checkInRecord) {
-                        let time = new Date(checkInRecord.created_at).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'});
-                        html += `
-                        <div class="col-md-4 col-lg-3">
-                            <div class="p-3 rounded-3 text-center border border-success" style="background: rgba(16, 185, 129, 0.1);">
-                                <h6 class="text-white fw-bold mb-2 text-truncate">${emp.full_name}</h6>
-                                <span class="badge bg-success w-100 py-2 fs-6"><i class="bi bi-check2-circle me-1"></i> Có mặt lúc ${time}</span>
+                    let empRecords = attendance ? attendance.filter(a => a.employee_id === emp.id) : [];
+                    
+                    // Hàm lấy giờ theo từng ca (Tích hợp xem lý do nghỉ)
+                    let getCheckTime = (type) => {
+                        let r = empRecords.find(a => a.check_type === type);
+                        if(!r) return '<span class="text-white-50">--:--</span>';
+                        
+                        if(r.status === 'absent') {
+                            let note = r.reason ? r.reason : 'Không rõ lý do';
+                            return `<span class="text-danger fw-bold" title="Lý do: ${note}" style="cursor: help;">NGHỈ <i class="bi bi-info-circle small"></i></span>`;
+                        }
+                        return `<span class="text-success fw-bold">${new Date(r.created_at).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})}</span>`;
+                    };
+
+                    html += `
+                    <div class="col-md-6 col-lg-4">
+                        <div class="p-3 rounded-4 shadow-sm border border-secondary" style="background: #1a1d20;">
+                            <h6 class="text-info fw-bold mb-3 border-bottom border-secondary pb-2"><i class="bi bi-person-badge me-2"></i>${emp.full_name}</h6>
+                            <div class="row g-2 text-center small">
+                                <div class="col-6"><div class="p-2 rounded bg-black border border-secondary text-white-50">Đầu sáng<br>${getCheckTime('morning_in')}</div></div>
+                                <div class="col-6"><div class="p-2 rounded bg-black border border-secondary text-white-50">Cuối sáng<br>${getCheckTime('morning_out')}</div></div>
+                                <div class="col-6"><div class="p-2 rounded bg-black border border-secondary text-white-50">Đầu chiều<br>${getCheckTime('afternoon_in')}</div></div>
+                                <div class="col-6"><div class="p-2 rounded bg-black border border-secondary text-white-50">Cuối chiều<br>${getCheckTime('afternoon_out')}</div></div>
                             </div>
-                        </div>`;
-                    } else {
-                        html += `
-                        <div class="col-md-4 col-lg-3">
-                            <div class="p-3 rounded-3 text-center border border-secondary" style="background: rgba(255,255,255,0.02);">
-                                <h6 class="text-white-50 fw-bold mb-2 text-truncate">${emp.full_name}</h6>
-                                <span class="badge bg-secondary text-dark w-100 py-2 fs-6"><i class="bi bi-x-circle me-1"></i> Chưa điểm danh</span>
-                            </div>
-                        </div>`;
-                    }
+                        </div>
+                    </div>`;
                 });
             }
             document.getElementById('attendanceContainer').innerHTML = html;
@@ -891,34 +985,83 @@
 
         async function checkAttendanceStatus() {
             const today = new Date();
-            today.setHours(0,0,0,0);
+            const vnTime = new Date(today.getTime() - (today.getTimezoneOffset() * 60000));
+            vnTime.setUTCHours(0,0,0,0);
             
             const { data } = await supabaseClient.from('attendance')
                 .select('*')
                 .eq('employee_id', currentUser.id)
-                .gte('created_at', today.toISOString())
-                .limit(1);
+                .gte('created_at', vnTime.toISOString());
 
             let topBtn = document.getElementById('topCheckInBtn');
-            if(!topBtn) return; // Tránh lỗi nếu chưa load xong giao diện
+            if(!topBtn) return; 
             
-            if(data && data.length > 0) {
-                let time = new Date(data[0].created_at).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'});
-                topBtn.className = "btn btn-sm nav-menu-btn fw-bold text-nowrap btn-success text-white border-success opacity-100";
-                topBtn.disabled = true;
-                topBtn.innerHTML = `<i class="bi bi-check-circle-fill"></i><span class="nav-menu-text ms-1">${time}</span>`;
-            } else {
-                topBtn.className = "btn btn-sm nav-menu-btn fw-bold text-nowrap btn-outline-success text-success border-success opacity-100";
+            let checks = data || [];
+            let count = checks.length; // Điếm số lần đã bấm (0 đến 4)
+            let fillPercent = count * 25; // Tính phần trăm lấp đầy: 25%, 50%, 75%, 100%
+
+            let hasMIn = checks.find(c => c.check_type === 'morning_in');
+            let hasMOut = checks.find(c => c.check_type === 'morning_out');
+            let hasAIn = checks.find(c => c.check_type === 'afternoon_in');
+            let hasAOut = checks.find(c => c.check_type === 'afternoon_out');
+
+            let nextCheck = ''; let btnText = '';
+            
+            if (!hasMIn) { nextCheck = 'morning_in'; btnText = 'ĐẦU SÁNG'; }
+            else if (!hasMOut) { nextCheck = 'morning_out'; btnText = 'CUỐI SÁNG'; }
+            else if (!hasAIn) { nextCheck = 'afternoon_in'; btnText = 'ĐẦU CHIỀU'; }
+            else if (!hasAOut) { nextCheck = 'afternoon_out'; btnText = 'CUỐI CHIỀU'; }
+
+            // Đổ màu nền nút dạng Progress Bar từ trái sang phải
+            let bgFill = `linear-gradient(to right, rgba(16, 185, 129, 0.4) ${fillPercent}%, transparent ${fillPercent}%)`;
+
+            if (nextCheck) {
+                topBtn.className = "btn btn-sm nav-menu-btn fw-bold text-nowrap text-success border-success opacity-100";
+                topBtn.style.background = bgFill;
                 topBtn.disabled = false;
-                topBtn.innerHTML = `<i class="bi bi-geo-alt-fill"></i><span class="nav-menu-text ms-1">ĐIỂM DANH</span>`;
+                topBtn.setAttribute('onclick', `openCheckInModal('${nextCheck}', '${btnText}')`);
+                topBtn.innerHTML = `<i class="bi bi-geo-alt-fill"></i><span class="nav-menu-text ms-1">Đ.DANH (${count}/4)</span>`;
+            } else {
+                topBtn.className = "btn btn-sm nav-menu-btn fw-bold text-nowrap text-white border-success opacity-100";
+                topBtn.style.background = "#10b981"; // Lấp đầy 100% màu xanh
+                topBtn.disabled = true;
+                topBtn.removeAttribute('onclick');
+                topBtn.innerHTML = `<i class="bi bi-check-circle-fill"></i><span class="nav-menu-text ms-1">HOÀN TẤT</span>`;
             }
         }
 
-        async function checkIn() {
-            const { error } = await supabaseClient.from('attendance').insert([{ employee_id: currentUser.id }]);
-            if(error) alert("❌ Điểm danh lỗi: " + error.message);
-            else {
-                checkAttendanceStatus(); // Đổi màu nút thành xanh lá ngay lập tức
+        // Mở bảng hỏi thay vì lưu ngay lập tức
+        function openCheckInModal(type, titleName) {
+            document.getElementById('checkInType').value = type;
+            document.getElementById('checkInModalTitle').innerText = "CA " + titleName;
+            
+            let reasonInput = document.getElementById('checkInReason');
+            if (reasonInput) reasonInput.value = ''; // Dọn sạch ô lý do cũ mỗi khi mở lại
+            
+            document.getElementById('checkInModal').classList.remove('d-none');
+        }
+
+        // Xác nhận lưu dữ liệu (Ép buộc nhập lý do nếu nghỉ)
+        async function confirmCheckIn(status) {
+            let type = document.getElementById('checkInType').value;
+            let reasonVal = document.getElementById('checkInReason').value.trim();
+
+            if (status === 'absent' && !reasonVal) {
+                return alert("Vui lòng nhập lý do vào ô trống trước khi báo nghỉ nhé!");
+            }
+
+            const { error } = await supabaseClient.from('attendance').insert([{ 
+                employee_id: currentUser.id, 
+                check_type: type,
+                status: status,
+                reason: reasonVal // Lưu lý do vào CSDL
+            }]);
+            
+            if(error) {
+                alert("❌ Lỗi: " + error.message);
+            } else {
+                document.getElementById('checkInModal').classList.add('d-none');
+                checkAttendanceStatus(); 
             }
         }
 
@@ -1012,6 +1155,223 @@
                 inputElem.value = '';
                 loadTaskComments(taskId); // Tải lại khung chat ngay lập tức
             }
+        }
+
+    // ================= HÀM BỔ SUNG HẠNG MỤC SIÊU TỐC TỪ DASHBOARD =================
+        async function addNewSubtask(taskId) {
+            let input = document.getElementById(`new_subtask_${taskId}`);
+            let title = input.value.trim();
+            if(!title) return;
+
+            // 1. Tìm số thứ tự (order_index) lớn nhất hiện tại để xếp hạng mục mới xuống cuối cùng
+            const { data: existing } = await supabaseClient.from('subtasks').select('order_index').eq('task_id', taskId).order('order_index', {ascending: false}).limit(1);
+            let nextIndex = (existing && existing.length > 0) ? (existing[0].order_index || 0) + 1 : 0;
+
+            // 2. Lưu hạng mục mới vào CSDL (Mặc định tiến độ 0%)
+            await supabaseClient.from('subtasks').insert([{
+                task_id: taskId,
+                title: title,
+                progress: 0,
+                is_completed: false,
+                order_index: nextIndex
+            }]);
+
+            // 3. Kéo toàn bộ hạng mục (cũ + mới) về để tính toán lại % của Công việc gốc
+            const { data: allSubs } = await supabaseClient.from('subtasks').select('progress').eq('task_id', taskId);
+            let totalProgress = 0;
+            allSubs.forEach(s => totalProgress += (s.progress || 0));
+            
+            // Chia trung bình cộng cho TỔNG số lượng hạng mục mới
+            let newOverallPercent = Math.round(totalProgress / allSubs.length); 
+            let newStatus = newOverallPercent === 100 ? 'Hoàn thành' : 'Đang làm';
+
+            // 4. Cập nhật % mới lên hệ thống
+            await supabaseClient.from('employee_kpis').update({ progress: newOverallPercent, status: newStatus }).eq('id', taskId);
+
+            // 5. Xóa chữ trong ô nhập và tải lại giao diện
+            input.value = '';
+            loadAllTasksAdmin(); 
+        }
+
+    // ================= HỆ THỐNG THÔNG BÁO TỪ GIÁM ĐỐC =================
+        async function openNotifications() {
+            const managementRoles = ['admin', 'pho_giam_doc', 'truong_phong', 'pho_phong'];
+            if (currentProfile && managementRoles.includes(currentProfile.role)) {
+                document.getElementById('adminCreateAnnouncement').classList.remove('d-none');
+                
+                // Tải danh sách nhân sự để sếp chọn người nhận
+                const { data: emps } = await supabaseClient.from('profiles').select('*').in('role', ['employee', 'pho_phong', 'truong_phong']).order('full_name', {ascending: true});
+                let optHtml = '<option value="all">🔊 Gửi Toàn công ty</option>';
+                if(emps) {
+                    emps.forEach(e => optHtml += `<option value="${e.id}">👤 Gửi riêng: ${e.full_name}</option>`);
+                }
+                document.getElementById('annTarget').innerHTML = optHtml;
+            }
+            document.getElementById('notificationPanel').classList.add('open');
+            
+            // Đánh dấu là đã xem thông báo mới nhất (để tắt chấm đỏ)
+            localStorage.setItem(`last_read_ann_${currentUser.id}`, new Date().getTime());
+            updateUnreadBadge(); 
+            
+            loadAnnouncements();
+        }
+
+        function closeNotifications() {
+            document.getElementById('notificationPanel').classList.remove('open');
+        }
+
+        // Kiểm tra và bật/tắt chấm đỏ báo hiệu
+        async function updateUnreadBadge() {
+            let lastRead = localStorage.getItem(`last_read_ann_${currentUser.id}`) || 0;
+            const { data } = await supabaseClient.from('announcements').select('created_at, target_users, sender_id').order('created_at', { ascending: false });
+                
+            let hasUnread = false;
+            if (data) {
+                // Lọc những thông báo của mình và không phải do mình gửi
+                let myAnn = data.filter(a => (a.target_users === 'all' || (a.target_users && a.target_users.includes(currentUser.id))) && a.sender_id !== currentUser.id);
+                if (myAnn.length > 0) {
+                    let latestTime = new Date(myAnn[0].created_at).getTime();
+                    if (latestTime > lastRead) hasUnread = true; // Có thông báo mới hơn lần đọc cuối
+                }
+            }
+            
+            let badges = document.querySelectorAll('.unread-badge');
+            badges.forEach(b => {
+                if(hasUnread) b.classList.remove('d-none');
+                else b.classList.add('d-none');
+            });
+        }
+
+        async function loadAnnouncements() {
+            const { data: ann } = await supabaseClient.from('announcements').select('*, profiles(full_name, role)').order('created_at', { ascending: false });
+            let html = '';
+            
+            if (ann && ann.length > 0) {
+                // Lọc để chỉ hiển thị thông báo "Toàn công ty", "Đích danh mình", hoặc "Do mình gửi"
+                let myAnn = ann.filter(a => a.target_users === 'all' || (a.target_users && a.target_users.includes(currentUser.id)) || a.sender_id === currentUser.id);
+                
+                if (myAnn.length === 0) {
+                    html = '<div class="text-white-50 text-center mt-4">Bạn không có thông báo nào.</div>';
+                } else {
+                    myAnn.forEach(a => {
+                        let timeStr = formatDateVN(a.created_at);
+                        let isAll = a.target_users === 'all';
+                        let targetLabel = isAll ? 'TOÀN CÔNG TY' : 'GỬI RIÊNG CÁ NHÂN';
+                        let badgeColor = isAll ? 'bg-danger' : 'bg-warning text-dark';
+
+                        html += `
+                        <div class="mb-3 p-3 rounded-4 shadow-sm" style="background: #1a1d20; border: 1px solid #3f3f46;">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <span class="badge ${badgeColor} mb-1"><i class="bi bi-megaphone-fill me-1"></i>${targetLabel}</span>
+                                    <div class="text-white-50 small">Từ: ${a.profiles.full_name}</div>
+                                </div>
+                                <span class="text-white-50 small">${timeStr}</span>
+                            </div>
+                            <h6 class="text-info fw-bold mb-1 mt-2">${a.title}</h6>
+                            <p class="text-white small mb-3">${a.content}</p>
+                            
+                            <div class="p-2 rounded bg-black border border-secondary mb-2 custom-scrollbar" style="max-height: 200px; overflow-y: auto;" id="ann_replies_${a.id}">
+                                <div class="text-center text-white-50 small placeholder-wave">Đang tải phản hồi...</div>
+                            </div>
+                            
+                            <div class="input-group input-group-sm">
+                                <input type="text" id="reply_input_${a.id}" class="form-control bg-dark border-secondary text-white" placeholder="Viết phản hồi / Xác nhận đã đọc..." onkeypress="if(event.key === 'Enter') replyAnnouncement('${a.id}')">
+                                <button onclick="replyAnnouncement('${a.id}')" class="btn btn-outline-info fw-bold"><i class="bi bi-send"></i></button>
+                            </div>
+                        </div>`;
+                        setTimeout(() => loadAnnouncementReplies(a.id), 100);
+                    });
+                }
+            } else {
+                html = '<div class="text-white-50 text-center mt-4">Chưa có thông báo nào từ Ban Giám đốc.</div>';
+            }
+            document.getElementById('announcementList').innerHTML = html;
+        }
+
+        async function loadAnnouncementReplies(annId) {
+            const { data: replies } = await supabaseClient.from('announcement_replies').select('*, profiles(full_name, role)').eq('announcement_id', annId).order('created_at', { ascending: true });
+            let container = document.getElementById(`ann_replies_${annId}`);
+            if(!container) return;
+            
+            if (replies && replies.length > 0) {
+                let html = replies.map(r => {
+                    let isAdmin = ['admin', 'pho_giam_doc', 'truong_phong', 'pho_phong'].includes(r.profiles.role);
+                    let color = isAdmin ? 'text-warning' : 'text-info';
+                    return `<div class="small mb-1"><strong class="${color}">${r.profiles.full_name}:</strong> <span class="text-white-50">${r.message}</span></div>`;
+                }).join('');
+                container.innerHTML = html;
+                container.scrollTop = container.scrollHeight;
+            } else {
+                container.innerHTML = '<div class="text-white-50 small fst-italic">Chưa có ai phản hồi.</div>';
+            }
+        }
+
+        async function sendAnnouncement() {
+            let target = document.getElementById('annTarget').value;
+            let title = document.getElementById('annTitle').value.trim();
+            let content = document.getElementById('annContent').value.trim();
+            
+            if(!title || !content) return alert("Vui lòng nhập đủ Tiêu đề và Nội dung!");
+            
+            const { error } = await supabaseClient.from('announcements').insert([{ 
+                sender_id: currentUser.id, 
+                title: title, 
+                content: content,
+                target_users: target 
+            }]);
+            if(error) alert("Lỗi gửi thông báo: " + error.message);
+            else {
+                document.getElementById('annTitle').value = '';
+                document.getElementById('annContent').value = '';
+                loadAnnouncements();
+            }
+        }
+
+        async function replyAnnouncement(annId) {
+            let input = document.getElementById(`reply_input_${annId}`);
+            let message = input.value.trim();
+            if(!message) return;
+            const { error } = await supabaseClient.from('announcement_replies').insert([{ announcement_id: annId, sender_id: currentUser.id, message: message }]);
+            if(!error) {
+                input.value = '';
+                loadAnnouncementReplies(annId);
+            }
+        }
+
+        function showIosToast(title, desc) {
+            document.getElementById('toastTitle').innerText = title;
+            document.getElementById('toastDesc').innerText = desc;
+            let toast = document.getElementById('iosToast');
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 6000); 
+        }
+
+        let globalAnnChannel = null;
+        function setupGlobalRealtime() {
+            updateUnreadBadge(); // Kiểm tra thông báo chưa đọc khi vừa đăng nhập
+
+            if(globalAnnChannel) supabaseClient.removeChannel(globalAnnChannel);
+            globalAnnChannel = supabaseClient.channel('public:announcements')
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'announcements' }, payload => {
+                    let ann = payload.new;
+                    let isForMe = ann.target_users === 'all' || (ann.target_users && ann.target_users.includes(currentUser.id));
+                    
+                    if (ann.sender_id !== currentUser.id && isForMe) {
+                        showIosToast(ann.title, ann.content);
+                        updateUnreadBadge(); // Cập nhật chấm đỏ ngay lập tức
+                    }
+                    
+                    if (document.getElementById('notificationPanel').classList.contains('open')) {
+                        loadAnnouncements();
+                        localStorage.setItem(`last_read_ann_${currentUser.id}`, new Date().getTime());
+                        updateUnreadBadge();
+                    }
+                })
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'announcement_replies' }, payload => {
+                    let rep = payload.new;
+                    if (document.getElementById('notificationPanel').classList.contains('open')) loadAnnouncementReplies(rep.announcement_id);
+                }).subscribe();
         }
     </script>
     </body>
