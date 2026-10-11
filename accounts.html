@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Phân Quyền - Quản lý KPI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { background-color: #000; overflow-x: hidden; margin: 0; color: #fff; }
+        .custom-scrollbar::-webkit-scrollbar { display: none !important; }
+        .custom-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+       /* MÀU NÚT MENU ĐANG CHỌN (DÙNG CHUNG CHO CẢ MÁY TÍNH & ĐIỆN THOẠI) */
+        .nav-menu-btn.active-nav { background-color: #0ea5e9 !important; color: #000 !important; border-color: #0ea5e9 !important; opacity: 1 !important; }
+        .nav-menu-btn { transition: all 0.2s; }
+
+        /* MENU MOBILE 1 DÒNG SIÊU GỌN */
+        @media (max-width: 767px) {
+            .mobile-px-half { padding-left: 0.5px !important; padding-right: 0.5px !important; }
+            .mobile-margin-0 { margin-left: 0 !important; margin-right: 0 !important; }
+            .nav-menu-text { display: none; }
+            .nav-menu-btn { background: transparent !important; border: 1px solid rgba(255,255,255,0.2) !important; color: #fff !important; padding: 6px 12px !important; border-radius: 8px; font-size: 1.1rem; opacity: 1 !important; }
+            #headerTitle { font-size: 0.7rem !important; white-space: normal !important; overflow: visible !important; line-height: 1.3; text-align: left; }
+        }
+    </style>
+</head>
+<body>
+    <div class="position-fixed top-0 start-0 w-100 h-100 d-flex flex-column animate__animated animate__fadeIn" style="background: #000; z-index: 99999; overflow-x: hidden;">
+        
+        <!-- HEADER & MENU TÍCH HỢP 1 DÒNG -->
+        <div class="d-flex p-2 border-bottom border-secondary bg-dark align-items-center sticky-top justify-content-between shadow-sm flex-shrink-0" style="z-index: 1020; padding-top: max(env(safe-area-inset-top), 0.5rem) !important;">
+            <!-- Trái: Nút Quay Lại & Lời Chào -->
+            <div class="d-flex align-items-center overflow-hidden pe-1">
+                <button onclick="window.location.href='dashboard.html'" class="btn btn-sm text-white-50 p-1 bg-transparent border-0 shadow-none me-1" title="Quay lại"><i class="bi bi-arrow-left fs-4"></i></button>
+                <div class="text-info fw-bold" id="headerTitle" style="font-size: 1rem; line-height: 1.2;">ĐANG TẢI...</div>
+            </div>
+            
+            <!-- Phải: 4 Nút Menu -->
+            <div class="d-flex gap-1 gap-md-2 flex-shrink-0">
+                <button onclick="window.location.href='dashboard.html'" class="btn btn-sm nav-menu-btn btn-outline-light fw-bold text-nowrap"><i class="bi bi-house-door"></i><span class="nav-menu-text ms-1">TỔNG QUAN</span></button>
+                <button onclick="window.location.href='task_form.html'" class="btn btn-sm nav-menu-btn btn-outline-light fw-bold text-nowrap"><i class="bi bi-clipboard-plus"></i><span class="nav-menu-text ms-1">GIAO VIỆC</span></button>
+                <button onclick="window.location.href='accounts.html'" class="btn btn-sm active-nav nav-menu-btn fw-bold text-nowrap"><i class="bi bi-people"></i><span class="nav-menu-text ms-1">PHÂN QUYỀN</span></button>
+                <button onclick="window.location.href='attendance.html'" class="btn btn-sm nav-menu-btn btn-outline-light fw-bold text-nowrap"><i class="bi bi-calendar-check"></i><span class="nav-menu-text ms-1">CHẤM CÔNG</span></button>
+            </div>
+        </div>
+
+        <div class="flex-grow-1 overflow-auto custom-scrollbar p-0">
+
+            <div class="p-3 mx-auto pb-5" style="max-width: 800px;">
+                <h5 class="text-info fw-bold mb-4"><i class="bi bi-shield-lock-fill me-2"></i>QUẢN LÝ QUYỀN NHÂN SỰ</h5>
+                <div id="accountsContainer" class="row g-3">
+                    <div class="text-center text-white-50">Đang tải danh sách...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const supabaseUrl = 'https://muzfjjyntqzsvwkwmors.supabase.co'; 
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11emZqanludHF6c3Z3a3dtb3JzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2MTAwNzgsImV4cCI6MjEwNzE4NjA3OH0.T8UcIVo6IwUssCGPNvXdeY5BFkGhjyR2GehTQJbgmkE';
+        const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        const roles = {
+            'admin': 'Giám đốc', 'pho_giam_doc': 'Phó Giám đốc', 'truong_phong': 'Trưởng phòng', 'pho_phong': 'Phó phòng', 'employee': 'Nhân viên'
+        };
+
+        const roleColors = {
+            'admin': '#ef4444', 'pho_giam_doc': '#f97316', 'truong_phong': '#eab308', 'pho_phong': '#10b981', 'employee': '#0ea5e9'
+        };
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) return window.location.href = "index.html";
+            const { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', session.user.id).single();
+            if(profile) document.getElementById('headerTitle').innerText = profile.full_name.toUpperCase();
+            loadAccounts();
+        });
+
+        async function loadAccounts() {
+            const { data: profiles } = await supabaseClient.from('profiles').select('*').order('full_name', { ascending: true });
+            
+            let html = '';
+            profiles.forEach(p => {
+                let options = Object.keys(roles).map(rk => `<option value="${rk}" ${p.role === rk ? 'selected' : ''}>${roles[rk]}</option>`).join('');
+                let bgHex = roleColors[p.role] || '#0ea5e9';
+                
+                html += `
+                <div class="col-md-6">
+                    <div class="p-3 rounded-4 shadow-sm" style="background: #1a1d20; border-left: 5px solid ${bgHex}; border-right: 1px solid #2b3035; border-top: 1px solid #2b3035; border-bottom: 1px solid #2b3035;">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="rounded-circle d-flex justify-content-center align-items-center fw-bold fs-4 text-dark" style="width: 50px; height: 50px; background-color: ${bgHex};">${p.full_name.charAt(0)}</div>
+                            <div class="ms-3">
+                                <h6 class="text-white fw-bold mb-1">${p.full_name}</h6>
+                                <div class="small text-white-50">${p.email || 'N/A'}</div>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <select id="role_${p.id}" class="form-select border-secondary text-white fw-bold" style="background-color: #121416;">${options}</select>
+                            <button onclick="updateRole('${p.id}')" class="btn btn-info fw-bold text-dark px-3"><i class="bi bi-save"></i></button>
+                        </div>
+                    </div>
+                </div>`;
+            });
+            document.getElementById('accountsContainer').innerHTML = html;
+        }
+
+        async function updateRole(userId) {
+            let newRole = document.getElementById(`role_${userId}`).value;
+            const { error } = await supabaseClient.from('profiles').update({ role: newRole }).eq('id', userId);
+            if (error) alert("Lỗi: " + error.message);
+            else { alert("✅ Cập nhật thành công!"); loadAccounts(); }
+        }
+    </script>
+</body>
+</html>

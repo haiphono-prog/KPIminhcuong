@@ -12,48 +12,89 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 
     <style>
-        body { background-color: #000; overflow: hidden; margin: 0; }
-        @media (max-width: 767.98px) {
+        /* Khóa cuộn ngang chống vỡ giao diện, cho phép cuộn dọc tự nhiên nếu cần */
+        body { background-color: #000; overflow-x: hidden; margin: 0; color: #fff; }
+        
+        .nav-menu-btn { transition: all 0.2s ease-in-out; }
+
+        /* MENU MOBILE 1 DÒNG SIÊU GỌN */
+        @media (max-width: 767px) {
             .mobile-px-half { padding-left: 0.5px !important; padding-right: 0.5px !important; }
             .mobile-margin-0 { margin-left: 0 !important; margin-right: 0 !important; }
+            .nav-menu-text { display: none; }
+            
+            /* Nút bình thường trên Mobile */
+            .nav-menu-btn { background: transparent !important; border: 1px solid rgba(255,255,255,0.2) !important; color: #fff !important; padding: 6px 12px !important; border-radius: 8px; font-size: 1.1rem; opacity: 1 !important; }
+            
+            #headerTitle { font-size: 0.7rem !important; white-space: normal !important; overflow: visible !important; line-height: 1.3; text-align: left; }
         }
+
+        /* MÀU NÚT MENU ĐANG CHỌN (ĐẶT Ở DƯỚI CÙNG ĐỂ GHI ĐÈ TUYỆT ĐỐI TRÊN MỌI THIẾT BỊ) */
+        .nav-menu-btn.active-nav { background: #0ea5e9 !important; color: #000 !important; border-color: #0ea5e9 !important; opacity: 1 !important; }
+
+        /* Ẩn thanh cuộn tàng hình */
         .custom-scrollbar::-webkit-scrollbar { display: none !important; }
         .custom-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
         /* Style cho thẻ KPI */
         .kpi-card { background: #1a1d20; border: 1px solid #2b3035; border-radius: 12px; padding: 15px; margin-bottom: 10px; }
         .progress-thin { height: 6px; background-color: #333; border-radius: 10px; margin-top: 8px; }
+
+        /* GIAO DIỆN THẺ THỐNG KÊ CHUYÊN NGHIỆP (GLASSMORPHISM) */
+        .stat-card { background: #1a1d20; border: 1px solid #2b3035; border-radius: 16px; padding: 20px; transition: all 0.3s ease; }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.3); border-color: #3f3f46; }
+        .stat-icon-box { width: 45px; height: 45px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
+        
+        /* THANH KÉO TIẾN ĐỘ ĐỔI MÀU THÔNG MINH (Chuẩn mọi trình duyệt) */
+        .dynamic-slider { -webkit-appearance: none; -moz-appearance: none; appearance: none; width: 100%; border-radius: 5px; outline: none; background: #2b3035; }
+        .dynamic-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #ffffff; cursor: pointer; border: 2px solid #2b3035; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
+        .dynamic-slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #ffffff; cursor: pointer; border: 2px solid #2b3035; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
     </style>
 </head>
 <body>
 
     <div class="position-fixed top-0 start-0 w-100 h-100 d-flex flex-column animate__animated animate__fadeIn" style="background: #212529; z-index: 99999; overflow: hidden;">
         
-        <!-- HEADER -->
-        <div class="d-flex p-3 border-bottom border-secondary bg-dark flex-shrink-0 align-items-center mobile-margin-0" style="margin-left: -0.5px; margin-right: -0.5px; padding-top: max(env(safe-area-inset-top), 1rem) !important;">
-            <button onclick="handleLogout()" class="btn btn-sm text-white-50 p-2 bg-transparent border-0 shadow-none">
-                <i class="bi bi-box-arrow-left fs-4"></i>
-            </button>
-            <h6 class="fw-bold mb-0 text-info flex-grow-1 text-center" style="letter-spacing: 1px; font-size: 1.1rem; margin-right: 40px;" id="headerTitle">
-                ĐANG TẢI...
-            </h6>
+        <!-- HEADER & MENU TÍCH HỢP 1 DÒNG -->
+        <div class="d-flex p-2 border-bottom border-secondary bg-dark align-items-center sticky-top justify-content-between shadow-sm" style="z-index: 1020; padding-top: max(env(safe-area-inset-top), 0.5rem) !important;">
+            
+            <!-- Trái: Nút Đăng Xuất & Lời Chào -->
+            <div class="d-flex align-items-center overflow-hidden pe-1">
+                <button onclick="handleLogout()" class="btn btn-sm text-danger p-1 bg-transparent border-0 shadow-none me-1" title="Đăng xuất"><i class="bi bi-power fs-4"></i></button>
+                <div class="text-info fw-bold" id="headerTitle" style="font-size: 1rem; line-height: 1.2;">ĐANG TẢI...</div>
+            </div>
+            
+            <!-- Phải: Khung hiển thị Nút Menu -->
+            <div class="d-flex gap-1 gap-md-2 flex-shrink-0">
+                <button onclick="window.location.href='dashboard.html'" class="btn btn-sm active-nav nav-menu-btn fw-bold text-nowrap"><i class="bi bi-house-door"></i><span class="nav-menu-text ms-1">TỔNG QUAN</span></button>
+                
+                <!-- MENU CHO ADMIN (Sẽ tự hiện nếu là Sếp) -->
+                <div id="adminMenu" class="d-none gap-1 gap-md-2">
+                    <button onclick="window.location.href='task_form.html'" class="btn btn-sm nav-menu-btn btn-outline-light fw-bold text-nowrap"><i class="bi bi-clipboard-plus"></i><span class="nav-menu-text ms-1">GIAO VIỆC</span></button>
+                    <button onclick="window.location.href='accounts.html'" class="btn btn-sm nav-menu-btn btn-outline-light fw-bold text-nowrap"><i class="bi bi-people"></i><span class="nav-menu-text ms-1">PHÂN QUYỀN</span></button>
+                    <button onclick="window.location.href='attendance.html'" class="btn btn-sm nav-menu-btn btn-outline-light fw-bold text-nowrap"><i class="bi bi-calendar-check"></i><span class="nav-menu-text ms-1">CHẤM CÔNG</span></button>
+                </div>
+
+                <!-- MENU CHO NHÂN VIÊN (Nút điểm danh sẽ lên đây) -->
+                <div id="employeeMenu" class="d-none gap-1 gap-md-2">
+                    <button id="topCheckInBtn" onclick="checkIn()" class="btn btn-sm nav-menu-btn btn-outline-success fw-bold text-nowrap text-success border-success"><i class="bi bi-geo-alt-fill"></i><span class="nav-menu-text ms-1">ĐIỂM DANH</span></button>
+                </div>
+            </div>
         </div>
 
-        <!-- BODY -->
+        <!-- BODY CHÍNH -->
         <div class="flex-grow-1 overflow-auto custom-scrollbar p-0 p-md-3">
             <div class="mobile-px-half" id="mainContent">
                 
-                <!-- Giao diện loading tạm thời -->
+                <!-- Giao diện loading được khôi phục để không báo lỗi null -->
                 <div class="text-center mt-5 text-white-50" id="loadingView">
                     <div class="spinner-border text-info mb-3" role="status"></div>
                     <p>Đang đồng bộ dữ liệu...</p>
                 </div>
 
-                <!-- PHÂN KHU 1: GIAO DIỆN ADMIN (Ẩn mặc định) -->
+                <!-- PHÂN KHU 1: GIAO DIỆN ADMIN (Nhóm Quản Lý) -->
                 <div id="adminView" class="d-none">
-                    <div class="p-3">
-                        <div class="text-white-50 small fw-bold mb-2">TỔNG QUAN CÔNG TY</div>
-                        <!-- Nơi đổ dữ liệu danh sách nhân viên & KPI của họ -->
+                    <div class="p-3 pb-5">
                         <div id="adminKpiList"></div>
                     </div>
                 </div>
@@ -69,10 +110,21 @@
 
             </div>
         </div>
+    </div>
 
-        <!-- FOOTER: Chốt đáy -->
-        <div class="d-flex mt-auto w-100 bg-dark border-top border-secondary flex-shrink-0" style="padding-bottom: env(safe-area-inset-bottom);" id="footerControls">
-            <!-- Nút bấm sẽ thay đổi tùy theo Role -->
+    <!-- BẢNG CẢNH BÁO XÓA CÔNG VIỆC -->
+    <div id="deleteModal" class="d-none" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 999999;">
+        <div class="w-100 h-100 d-flex align-items-center justify-content-center">
+            <div class="p-4 rounded-4 shadow-lg bg-dark text-center" style="width: 90%; max-width: 400px; border: 1px solid #ef4444;">
+                <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 3.5rem;"></i>
+                <h4 class="text-white fw-bold mt-2 mb-2">CẢNH BÁO XÓA</h4>
+                <p class="text-white-50 small mb-4">Bạn có chắc chắn muốn xóa công việc này?<br>Toàn bộ hạng mục con và dữ liệu tiến độ sẽ bị xóa vĩnh viễn!</p>
+                <input type="hidden" id="deleteTaskId">
+                <div class="d-flex gap-2">
+                    <button onclick="confirmDeleteTask()" class="btn btn-danger flex-grow-1 fw-bold py-2">XÓA NGAY</button>
+                    <button onclick="document.getElementById('deleteModal').classList.add('d-none')" class="btn btn-secondary flex-grow-1 fw-bold py-2">HỦY BỎ</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -103,7 +155,6 @@
         }
 
         async function loadUserProfile() {
-            // 3. Dùng supabaseClient
             const { data, error } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).single();
             
             document.getElementById('loadingView').classList.add('d-none');
@@ -114,16 +165,49 @@
             }
 
             currentProfile = data;
-            document.getElementById('headerTitle').innerText = `XIN CHÀO, ${data.full_name.toUpperCase()}`;
 
-            if (data.role === 'admin') {
+            // 1. Dịch mã quyền hạn sang Tiếng Việt để hiển thị lên Header cho trang trọng
+            const roleNames = {
+                'admin': 'GIÁM ĐỐC',
+                'giam_doc': 'GIÁM ĐỐC',
+                'pho_giam_doc': 'PHÓ GIÁM ĐỐC',
+                'truong_phong': 'TRƯỞNG PHÒNG',
+                'pho_phong': 'PHÓ PHÒNG',
+                'employee': 'NHÂN VIÊN',
+                'nhan_vien': 'NHÂN VIÊN'
+            };
+            let roleDisplay = roleNames[data.role] || 'NHÂN SỰ';
+
+            // Hiển thị tên kèm chức danh
+            document.getElementById('headerTitle').innerText = `XIN CHÀO, ${data.full_name.toUpperCase()} - ${roleDisplay}`;
+
+            // Định tuyến nhóm Quản lý & Hiển thị Menu tương ứng
+            const managementRoles = ['admin', 'pho_giam_doc', 'truong_phong', 'pho_phong'];
+            if (managementRoles.includes(data.role)) {
+                document.getElementById('adminMenu').classList.remove('d-none');
+                document.getElementById('adminMenu').classList.add('d-flex');
                 renderAdminView();
             } else {
+                document.getElementById('employeeMenu').classList.remove('d-none');
+                document.getElementById('employeeMenu').classList.add('d-flex');
                 renderEmployeeView();
             }
         }
         let statusChart = null;
         let employeeChart = null;
+        let attendanceChart = null; // Khai báo thêm biểu đồ điểm danh
+
+        // HÀM CHUẨN HÓA NGÀY THÁNG VN (DD/MM/YYYY HH:MM)
+        function formatDateVN(dateStr) {
+            if (!dateStr) return 'Không có';
+            let d = new Date(dateStr);
+            let day = d.getDate().toString().padStart(2, '0');
+            let month = (d.getMonth() + 1).toString().padStart(2, '0');
+            let year = d.getFullYear();
+            let hrs = d.getHours().toString().padStart(2, '0');
+            let mins = d.getMinutes().toString().padStart(2, '0');
+            return `${day}/${month}/${year} ${hrs}:${mins}`;
+        }
 
         // Tự động tính toán màu sắc dựa trên Hạn chót
         function getDeadlineStatus(dueDateStr, progress) {
@@ -152,90 +236,87 @@
             `).join('') : '<p class="text-muted">Chưa có nhân sự nào.</p>';
 
             document.getElementById('adminKpiList').innerHTML = `
-                <!-- PHẦN 1: TỔNG QUAN CÔNG TY -->
-                <h5 class="text-info fw-bold mb-3"><i class="bi bi-building me-2"></i>1. TỔNG QUAN CÔNG TY</h5>
-                <div class="row mb-4">
-                    <div class="col-md-4 mb-3">
-                        <div class="p-3 rounded-4 shadow-sm" style="background: linear-gradient(135deg, #0ea5e9, #0284c7); border: none;">
-                            <div class="text-white fw-bold mb-1"><i class="bi bi-list-task me-2"></i>TỔNG CÔNG VIỆC</div>
-                            <h2 class="text-white fw-bold mb-0" id="statTotalTasks">0</h2>
+                <!-- PHẦN 1: THẺ THỐNG KÊ (STATS CARDS) -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="text-info fw-bold mb-0"><i class="bi bi-building me-2"></i>TỔNG QUAN CÔNG TY</h5>
+                </div>
+                
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <div class="stat-card" style="border-left: 4px solid #0ea5e9;">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="text-white-50 fw-bold small mb-1">TỔNG CÔNG VIỆC</div>
+                                    <h3 class="text-white fw-bold mb-0" id="statTotalTasks">0</h3>
+                                </div>
+                                <div class="stat-icon-box text-info" style="background: rgba(14, 165, 233, 0.15);"><i class="bi bi-journal-album"></i></div>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-md-4 mb-3">
-                        <div class="p-3 rounded-4 shadow-sm" style="background: linear-gradient(135deg, #10b981, #059669); border: none;">
-                            <div class="text-white fw-bold mb-1"><i class="bi bi-check-circle-fill me-2"></i>ĐÃ HOÀN THÀNH</div>
-                            <h2 class="text-white fw-bold mb-0" id="statCompleted">0</h2>
+                    <div class="col-md-4">
+                        <div class="stat-card" style="border-left: 4px solid #10b981;">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="text-white-50 fw-bold small mb-1">ĐÃ HOÀN THÀNH</div>
+                                    <h3 class="text-white fw-bold mb-0" id="statCompleted">0</h3>
+                                </div>
+                                <div class="stat-icon-box text-success" style="background: rgba(16, 185, 129, 0.15);"><i class="bi bi-check2-all"></i></div>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-md-4 mb-3">
-                        <div class="p-3 rounded-4 shadow-sm" style="background: linear-gradient(135deg, #f59e0b, #d97706); border: none;">
-                            <div class="text-white fw-bold mb-1"><i class="bi bi-hourglass-split me-2"></i>ĐANG THỰC HIỆN</div>
-                            <h2 class="text-white fw-bold mb-0" id="statInProgress">0</h2>
+                    <div class="col-md-4">
+                        <div class="stat-card" style="border-left: 4px solid #f59e0b;">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="text-white-50 fw-bold small mb-1">ĐANG THỰC HIỆN</div>
+                                    <h3 class="text-white fw-bold mb-0" id="statInProgress">0</h3>
+                                </div>
+                                <div class="stat-icon-box text-warning" style="background: rgba(245, 158, 11, 0.15);"><i class="bi bi-hourglass-split"></i></div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="row mb-5">
-                    <div class="col-md-4 mb-3">
-                        <div class="p-3 rounded-4 shadow-sm h-100" style="background: #1a1d20; border: 1px solid #2b3035;">
-                            <h6 class="fw-bold mb-3 text-info"><i class="bi bi-pie-chart-fill me-2"></i>TỈ LỆ HOÀN THÀNH</h6>
-                            <div style="height: 200px; display: flex; justify-content: center;">
-                                <canvas id="statusChart"></canvas>
-                            </div>
+                <!-- PHẦN BIỂU ĐỒ CHUYÊN NGHIỆP TRỰC QUAN -->
+                <div class="row g-3 mb-5">
+                    <!-- Biểu đồ 1: Tỉ lệ hoàn thành (Doughnut khoét lỗ) -->
+                    <div class="col-lg-3 col-md-6">
+                        <div class="stat-card h-100">
+                            <h6 class="fw-bold text-info small mb-3"><i class="bi bi-pie-chart-fill me-2"></i>TỈ LỆ HOÀN THÀNH</h6>
+                            <div style="height: 200px; display: flex; justify-content: center;"><canvas id="statusChart"></canvas></div>
                         </div>
                     </div>
-                    <div class="col-md-8 mb-3">
-                        <div class="p-3 rounded-4 shadow-sm h-100" style="background: #1a1d20; border: 1px solid #2b3035;">
-                            <h6 class="fw-bold mb-3 text-info"><i class="bi bi-bar-chart-line-fill me-2"></i>PHÂN BỔ KHỐI LƯỢNG CHO NHÂN SỰ</h6>
-                            <div style="height: 200px;">
-                                <canvas id="employeeChart"></canvas>
-                            </div>
+                    
+                    <!-- Biểu đồ 2: Phân bổ công việc (Thanh ngang - Dễ đọc tên) -->
+                    <div class="col-lg-5 col-md-6">
+                        <div class="stat-card h-100">
+                            <h6 class="fw-bold text-info small mb-3"><i class="bi bi-bar-chart-fill me-2"></i>PHÂN BỔ CÔNG VIỆC</h6>
+                            <div style="height: 200px;"><canvas id="employeeChart"></canvas></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Biểu đồ 3: Chuyên cần (Biểu đồ mới) -->
+                    <div class="col-lg-4 col-md-12">
+                        <div class="stat-card h-100">
+                            <h6 class="fw-bold text-success small mb-3"><i class="bi bi-calendar-check-fill me-2"></i>ĐIỂM DANH THÁNG NÀY</h6>
+                            <div style="height: 200px;"><canvas id="attendanceChart"></canvas></div>
                         </div>
                     </div>
                 </div>
 
                 <!-- PHẦN 2: TỔNG QUAN TỪNG NHÂN SỰ -->
-                <h5 class="text-warning fw-bold mb-3"><i class="bi bi-people-fill me-2"></i>2. TỔNG QUAN TỪNG NHÂN SỰ</h5>
+                <h5 class="text-warning fw-bold mb-3"><i class="bi bi-people-fill me-2"></i>TỔNG QUAN TỪNG NHÂN SỰ</h5>
                 <div id="employeeOverviewContainer" class="row mb-5">
                     <!-- Dữ liệu từng nhân viên sẽ được đổ vào đây -->
                 </div>
 
-                <!-- PHẦN 3: GIAO VIỆC MỚI -->
-                <h5 class="text-success fw-bold mb-3"><i class="bi bi-clipboard2-plus-fill me-2"></i>3. PHÁT HÀNH CÔNG VIỆC MỚI</h5>
-                <div class="p-4 mb-5 rounded-4 shadow-sm" style="background: rgba(14, 165, 233, 0.08); border: 1px solid #0ea5e9;">
-                    <div class="mb-3">
-                        <label class="text-white fw-bold small mb-1">TÊN CÔNG VIỆC</label>
-                        <input type="text" id="adminTaskName" class="form-control text-white" style="${customInputStyle}" placeholder="Ví dụ: Triển khai chiến dịch Marketing Q2">
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-6 mb-2 mb-md-0">
-                            <label class="text-white fw-bold small mb-1">THỜI GIAN BẮT ĐẦU</label>
-                            <input type="datetime-local" id="adminStartDate" class="form-control text-white" style="${customInputStyle}">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="text-white fw-bold small mb-1">THỜI GIAN KẾT THÚ (HẠN CHÓT)</label>
-                            <input type="datetime-local" id="adminDueDate" class="form-control text-white" style="${customInputStyle}">
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="text-white fw-bold small mb-1">GIAO CHO NHÂN SỰ (CHỌN MỘT HOẶC NHIỀU)</label>
-                        <div class="p-3 rounded-3" style="background: #121416; border: 1px solid #2b3035; max-height: 150px; overflow-y: auto;">
-                            ${empCheckboxes}
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="text-white fw-bold small mb-1">CÁC HẠNG MỤC CÔNG VIỆC</label>
-                        <textarea id="adminSubtasks" class="form-control text-white" style="${customInputStyle}" rows="3" placeholder="1. Lên ý tưởng thiết kế&#10;2. Viết nội dung chi tiết..."></textarea>
-                    </div>
-                    <button onclick="assignProfessionalTask()" class="btn btn-info w-100 fw-bold py-3 text-dark">PHÁT HÀNH CÔNG VIỆC</button>
-                </div>
-                
+                             
                 <!-- PHẦN 4: CHI TIẾT TOÀN BỘ -->
-                <h5 class="text-white fw-bold mb-3"><i class="bi bi-list-nested me-2"></i>4. CHI TIẾT TOÀN BỘ CÔNG VIỆC</h5>
+                <h5 class="text-white fw-bold mb-3"><i class="bi bi-list-nested me-2"></i>CHI TIẾT CÔNG VIỆC</h5>
                 <div id="allTasksContainer">Đang tải...</div>
 
                 <!-- CHÈN THÊM PHẦN 5: BẢNG ĐIỂM DANH REALTIME -->
-                <h5 class="text-success fw-bold mb-3 mt-5"><i class="bi bi-person-check-fill me-2"></i>5. TRẠNG THÁI ĐIỂM DANH HÔM NAY</h5>
+                <h5 class="text-success fw-bold mb-3 mt-5"><i class="bi bi-person-check-fill me-2"></i>ĐIỂM DANH HÔM NAY</h5>
                 <div class="p-4 mb-5 rounded-4 shadow-sm" style="background: #1a1d20; border: 1px solid #2b3035;">
                     <div id="attendanceContainer" class="row g-3">
                         <!-- Danh sách điểm danh sẽ đổ vào đây -->
@@ -248,6 +329,18 @@
             setupAdminRealtime();
         }
 
+        // HÀM ĐÓNG/MỞ CHI TIẾT CÔNG VIỆC
+        function toggleTaskBody(taskId) {
+            let body = document.getElementById(`taskBody_${taskId}`);
+            let icon = document.getElementById(`icon_${taskId}`);
+            if (body.classList.contains('d-none')) {
+                body.classList.remove('d-none');
+                icon.classList.replace('bi-chevron-down', 'bi-chevron-up');
+            } else {
+                body.classList.add('d-none');
+                icon.classList.replace('bi-chevron-up', 'bi-chevron-down');
+            }
+        }
         async function loadAllTasksAdmin() {
             const { data: employees } = await supabaseClient.from('profiles').select('*').eq('role', 'employee');
             const { data: tasks } = await supabaseClient.from('employee_kpis')
@@ -265,25 +358,35 @@
                 document.getElementById('statCompleted').innerText = completed;
                 document.getElementById('statInProgress').innerText = inProgress;
 
+                // Chuẩn hóa font chữ và màu xám cho toàn bộ biểu đồ
+                Chart.defaults.color = '#94a3b8';
+                Chart.defaults.font.family = "'Segoe UI', Roboto, sans-serif";
+                Chart.defaults.scale.grid.color = 'rgba(255, 255, 255, 0.05)';
+
+                // Biểu đồ 1: Tỉ lệ hoàn thành (Khoét lỗ hiện đại, bo góc)
                 const ctxStatus = document.getElementById('statusChart').getContext('2d');
                 if (statusChart) statusChart.destroy();
                 statusChart = new Chart(ctxStatus, {
                     type: 'doughnut',
                     data: {
-                        labels: ['Hoàn thành', 'Đang làm'],
-                        datasets: [{ data: [completed, inProgress], backgroundColor: ['#10b981', '#f59e0b'], borderWidth: 0 }]
+                        labels: ['Xong', 'Đang làm'],
+                        datasets: [{ 
+                            data: [completed, inProgress], 
+                            backgroundColor: ['#10b981', '#f59e0b'],
+                            borderColor: '#1a1d20', // Màu viền khớp với nền card
+                            borderWidth: 3, borderRadius: 5
+                        }]
                     },
-                    options: { maintainAspectRatio: false, plugins: { legend: { labels: { color: 'white' } } } }
+                    options: { cutout: '75%', maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8 } } } }
                 });
 
-                let empTaskCount = {};
-                tasks.forEach(t => {
-                    if(t.task_assignees) {
-                        t.task_assignees.forEach(a => {
-                            let name = a.profiles.full_name;
-                            empTaskCount[name] = (empTaskCount[name] || 0) + 1;
-                        });
-                    }
+                // Biểu đồ 2: Phân bổ công việc (Dạng thanh ngang dễ đọc tên)
+                let empNames = [];
+                let empTaskData = [];
+                employees.forEach(e => {
+                    let count = tasks.filter(t => t.task_assignees.some(a => a.employee_id === e.id)).length;
+                    empNames.push(e.full_name);
+                    empTaskData.push(count);
                 });
 
                 const ctxEmp = document.getElementById('employeeChart').getContext('2d');
@@ -291,12 +394,59 @@
                 employeeChart = new Chart(ctxEmp, {
                     type: 'bar',
                     data: {
-                        labels: Object.keys(empTaskCount),
-                        datasets: [{ label: 'Số lượng công việc', data: Object.values(empTaskCount), backgroundColor: '#0ea5e9', borderRadius: 4 }]
+                        labels: empNames,
+                        datasets: [{
+                            label: 'Số công việc', data: empTaskData,
+                            backgroundColor: 'rgba(14, 165, 233, 0.8)', borderColor: '#0ea5e9', borderWidth: 1, borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y', // Biến thành thanh ngang
+                        maintainAspectRatio: false,
+                        scales: { 
+                            x: { beginAtZero: true, ticks: { stepSize: 1 } },
+                            y: { grid: { display: false } }
+                        },
+                        plugins: { legend: { display: false } }
+                    }
+                });
+
+                // Biểu đồ 3: Điểm danh tháng này (Đã fix lỗi đếm trùng ngày)
+                const today = new Date();
+                const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
+                // Bổ sung lấy thêm trường created_at
+                const { data: attData } = await supabaseClient.from('attendance').select('employee_id, created_at').gte('created_at', startOfMonth);
+                
+                let empAttData = [];
+                employees.forEach(e => {
+                    if (attData) {
+                        // Lọc các bản ghi của nhân viên này
+                        let empRecords = attData.filter(a => a.employee_id === e.id);
+                        // Dùng Set để gom nhóm, đảm bảo 1 ngày dù có bấm 10 lần cũng chỉ tính là 1
+                        let uniqueDays = new Set(empRecords.map(a => a.created_at.split('T')[0]));
+                        empAttData.push(uniqueDays.size);
+                    } else {
+                        empAttData.push(0);
+                    }
+                });
+
+                const ctxAtt = document.getElementById('attendanceChart').getContext('2d');
+                if (attendanceChart) attendanceChart.destroy();
+                attendanceChart = new Chart(ctxAtt, {
+                    type: 'bar',
+                    data: {
+                        labels: empNames,
+                        datasets: [{
+                            label: 'Ngày có mặt', data: empAttData,
+                            backgroundColor: 'rgba(16, 185, 129, 0.8)', borderColor: '#10b981', borderWidth: 1, borderRadius: 4
+                        }]
                     },
                     options: {
                         maintainAspectRatio: false,
-                        scales: { y: { ticks: { color: '#adb5bd', stepSize: 1 }, grid: { color: '#2b3035' } }, x: { ticks: { color: '#adb5bd' }, grid: { display: false } } },
+                        scales: { 
+                            y: { beginAtZero: true, ticks: { stepSize: 1 } },
+                            x: { grid: { display: false } }
+                        },
                         plugins: { legend: { display: false } }
                     }
                 });
@@ -345,8 +495,16 @@
 
             // ================= 3. CHI TIẾT CÔNG VIỆC & KHUNG CHAT ADMIN =================
             let allTasksHtml = '';
-            if (!tasks || tasks.length === 0) allTasksHtml = '<p class="text-white-50">Chưa có công việc nào được tạo.</p>';
-            else {
+            if (!tasks || tasks.length === 0) {
+                allTasksHtml = '<p class="text-white-50">Chưa có công việc nào được tạo.</p>';
+            } else {
+                // SẮP XẾP LẠI: Việc chưa xong (Đang làm/Trễ) lên trên cùng, 100% xuống đáy
+                tasks.sort((a, b) => {
+                    if (a.progress === 100 && b.progress !== 100) return 1;
+                    if (a.progress !== 100 && b.progress === 100) return -1;
+                    return 0; // Nếu cùng trạng thái thì giữ nguyên thứ tự tạo mới nhất
+                });
+
                 tasks.forEach(t => {
                     let statusInfo = getDeadlineStatus(t.due_date, t.progress);
                     let assigneesStr = t.task_assignees.map(a => `<span class="badge bg-dark text-info border border-info me-1 fw-bold">👤 ${a.profiles.full_name}</span>`).join('');
@@ -358,33 +516,48 @@
                         </div>
                     `).join('');
                     
+                    // THIẾT LẬP BUNG/THU
+                    let isCompleted = t.progress === 100;
+                    let bodyClass = isCompleted ? 'd-none' : ''; // Nếu xong 100% thì ẩn nội dung
+                    let iconClass = isCompleted ? 'bi-chevron-down' : 'bi-chevron-up'; // Nút mũi tên
+
                     allTasksHtml += `
                     <div class="p-3 mb-3 rounded-3 text-white shadow-sm" style="background: #1a1d20; border-left: 5px solid ${statusInfo.hex}; border: 1px solid #2b3035;">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <h6 class="text-white fw-bold mb-0 fs-5 pe-3">${t.task_name}</h6>
-                            <div class="d-flex gap-2 align-items-center">
+                        
+                        <!-- HEADER CÓ THỂ BẤM VÀO ĐỂ BUNG/THU -->
+                        <div class="d-flex justify-content-between align-items-start mb-2" style="cursor: pointer;" onclick="toggleTaskBody('${t.id}')">
+                            <h6 class="text-white fw-bold mb-0 fs-5 pe-3 d-flex align-items-center">
+                                ${t.task_name}
+                                <i class="bi ${iconClass} ms-2 text-white-50" id="icon_${t.id}"></i>
+                            </h6>
+                            <div class="d-flex gap-2 align-items-center" onclick="event.stopPropagation()">
                                 <span class="badge bg-${statusInfo.color} fw-bold px-2 py-1 progress-badge-${t.id}">${t.progress}%</span>
-                                <button onclick="editTask('${t.id}')" class="btn btn-sm btn-outline-info p-1 px-2" title="Sửa"><i class="bi bi-pencil"></i></button>
+                                <button onclick="window.location.href='task_form.html?id=${t.id}'" class="btn btn-sm btn-outline-info p-1 px-2" title="Sửa"><i class="bi bi-pencil"></i></button>
                                 <button onclick="deleteTask('${t.id}')" class="btn btn-sm btn-outline-danger p-1 px-2" title="Xóa"><i class="bi bi-trash"></i></button>
                             </div>
                         </div>
-                        <div class="mb-2">${assigneesStr}</div>
-                        <div class="small text-${statusInfo.color} fw-bold mb-3">
-                            <i class="bi bi-clock-history me-1"></i> ${statusInfo.text} <br>
-                            <span class="text-white-50 fw-normal">🏁 Hạn chót: ${t.due_date ? new Date(t.due_date).toLocaleString() : 'Không có'}</span>
-                        </div>
-                        <div class="p-2 rounded mb-2 bg-black bg-opacity-50 border border-secondary">${subtasksHtml || '<span class="text-muted small">Không có hạng mục chi tiết</span>'}</div>
                         
-                        <!-- KHUNG TRAO ĐỔI DÀNH CHO ADMIN (ĐÃ CHÈN VÀO ĐÂY) -->
-                        <div class="p-3 rounded bg-black bg-opacity-50 border border-secondary mt-3 mb-3">
-                            <div class="text-info fw-bold small mb-2"><i class="bi bi-chat-dots-fill me-1"></i> TRAO ĐỔI VỚI NHÂN SỰ:</div>
-                            <div id="comments_box_${t.id}" class="mb-2 custom-scrollbar" style="max-height: 120px; overflow-y: auto;"></div>
-                            <div class="input-group input-group-sm">
-                                <input type="text" id="comment_input_${t.id}" class="form-control text-white bg-dark border-secondary" placeholder="Nhập phản hồi, chỉ đạo cho nhân sự...">
-                                <button onclick="sendTaskComment('${t.id}')" class="btn btn-outline-info fw-bold">GỬI</button>
+                        <!-- PHẦN THÂN CÔNG VIỆC (Có thể bị ẩn) -->
+                        <div id="taskBody_${t.id}" class="${bodyClass}">
+                            <div class="mb-2">${assigneesStr}</div>
+                            <div class="small text-${statusInfo.color} fw-bold mb-3">
+                                <i class="bi bi-clock-history me-1"></i> ${statusInfo.text} <br>
+                                <span class="text-white-50 fw-normal">🏁 Hạn chót: ${formatDateVN(t.due_date)}</span>
+                            </div>
+                            <div class="p-2 rounded mb-2 bg-black bg-opacity-50 border border-secondary">${subtasksHtml || '<span class="text-muted small">Không có hạng mục chi tiết</span>'}</div>
+                            
+                            <!-- KHUNG TRAO ĐỔI -->
+                            <div class="p-3 rounded bg-black bg-opacity-50 border border-secondary mt-3 mb-3">
+                                <div class="text-info fw-bold small mb-2"><i class="bi bi-chat-dots-fill me-1"></i> TRAO ĐỔI VỚI NHÂN SỰ:</div>
+                                <div id="comments_box_${t.id}" class="mb-2 custom-scrollbar" style="max-height: 120px; overflow-y: auto;"></div>
+                                <div class="input-group input-group-sm">
+                                    <input type="text" id="comment_input_${t.id}" class="form-control text-white bg-dark border-secondary" placeholder="Nhập phản hồi, chỉ đạo cho nhân sự...">
+                                    <button onclick="sendTaskComment('${t.id}')" class="btn btn-outline-info fw-bold">GỬI</button>
+                                </div>
                             </div>
                         </div>
 
+                        <!-- Thanh tiến độ luôn hiện bên ngoài -->
                         <div class="progress mt-2" style="height: 6px;"><div class="progress-bar bg-${statusInfo.color} progress-bar-${t.id}" style="width: ${t.progress}%"></div></div>
                     </div>`;
 
@@ -535,49 +708,81 @@
             // Lệnh sắp xếp order_index để cố định vị trí hạng mục
             const { data: tasks } = await supabaseClient.from('employee_kpis').select('*, subtasks(*)').in('id', taskIds).order('created_at', { ascending: false }).order('order_index', { foreignTable: 'subtasks', ascending: true });
 
+            // 1. SẮP XẾP LẠI: Việc chưa xong (Đang làm/Trễ) lên trên cùng, 100% xuống đáy
+            tasks.sort((a, b) => {
+                if (a.progress === 100 && b.progress !== 100) return 1;
+                if (a.progress !== 100 && b.progress === 100) return -1;
+                return 0; // Cùng trạng thái thì giữ nguyên
+            });
+
             let html = '';
             tasks.forEach(t => {
                 let statusInfo = getDeadlineStatus(t.due_date, t.progress); // Gọi hàm lấy màu
 
-                let subtasksHtml = t.subtasks.map(s => `
+                let subtasksHtml = t.subtasks.map(s => {
+                    let sVal = s.progress || 0;
+                    
+                    // Tính toán màu sắc mặc định lúc vừa tải trang
+                    let color = '#0ea5e9';
+                    if (sVal === 100) color = '#10b981';
+                    else if (sVal <= 30) color = '#ef4444';
+                    else if (sVal <= 60) color = '#f59e0b';
+                    let bgStyle = `background: linear-gradient(to right, ${color} ${sVal}%, #2b3035 ${sVal}%);`;
+
+                    return `
                     <div class="mb-3">
                         <div class="d-flex justify-content-between mb-1">
                             <span class="text-white small fw-medium">${s.title}</span>
-                            <span class="text-info small fw-bold" id="sub_val_${s.id}">${s.progress || 0}%</span>
+                            <span class="text-info small fw-bold" id="sub_val_${s.id}">${sVal}%</span>
                         </div>
-                        <input type="range" class="form-range" style="height: 6px;" min="0" max="100" value="${s.progress || 0}" 
-                               oninput="document.getElementById('sub_val_${s.id}').innerText = this.value + '%'"
+                        <input type="range" class="dynamic-slider" style="height: 8px; ${bgStyle}" min="0" max="100" value="${sVal}" 
+                               oninput="updateSliderUI(this, '${s.id}')"
                                onchange="updateSubtaskProgress('${s.id}', this.value)">
-                    </div>
-                `).join('');
+                    </div>`;
+                }).join('');
+
+                // 2. THIẾT LẬP BUNG/THU Y NHƯ BÊN ADMIN
+                let isCompleted = t.progress === 100;
+                let bodyClass = isCompleted ? 'd-none' : ''; // Nếu xong 100% thì ẩn phần thân đi
+                let iconClass = isCompleted ? 'bi-chevron-down' : 'bi-chevron-up'; // Nút mũi tên tương ứng
 
                 html += `
                 <div class="p-3 mb-3 rounded-3 text-white shadow-sm" style="background: #1a1d20; border-left: 5px solid ${statusInfo.hex}; border-right: 1px solid #2b3035; border-top: 1px solid #2b3035; border-bottom: 1px solid #2b3035;">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="fw-bold fs-5 text-white">${t.task_name}</span>
+                    
+                    <!-- HEADER CÔNG VIỆC CÓ THỂ BẤM VÀO ĐỂ BUNG/THU -->
+                    <div class="d-flex justify-content-between align-items-center mb-2" style="cursor: pointer;" onclick="toggleTaskBody('${t.id}')">
+                        <h6 class="fw-bold fs-5 text-white mb-0 d-flex align-items-center">
+                            ${t.task_name}
+                            <i class="bi ${iconClass} ms-2 text-white-50" id="icon_${t.id}"></i>
+                        </h6>
                         <span class="badge bg-${statusInfo.color} fw-bold px-2 py-1">${t.progress}%</span>
                     </div>
-                    <div class="small text-${statusInfo.color} mb-3 fw-bold">
-                        <i class="bi bi-clock-history me-1"></i> Trạng thái: ${statusInfo.text} <br>
-                        <span class="text-white-50 fw-normal">🏁 Hạn chót: ${t.due_date ? new Date(t.due_date).toLocaleString() : 'Không có'}</span>
-                    </div>
+                    
+                    <!-- PHẦN THÂN CÔNG VIỆC (Được ẩn đi nếu đã 100%) -->
+                    <div id="taskBody_${t.id}" class="${bodyClass}">
+                        <div class="small text-${statusInfo.color} mb-3 fw-bold">
+                            <i class="bi bi-clock-history me-1"></i> Trạng thái: ${statusInfo.text} <br>
+                            <span class="text-white-50 fw-normal">🏁 Hạn chót: ${formatDateVN(t.due_date)}</span>
+                        </div>
 
-                    <div class="p-3 rounded mb-3 bg-black bg-opacity-50 border border-secondary">
-                        <div class="text-info fw-bold small mb-3"><i class="bi bi-sliders me-1"></i> TIẾN ĐỘ TỪNG HẠNG MỤC:</div>
-                        ${subtasksHtml || '<span class="text-muted small">Không có hạng mục chi tiết.</span>'}
-                    </div>
+                        <div class="p-3 rounded mb-3 bg-black bg-opacity-50 border border-secondary">
+                            <div class="text-info fw-bold small mb-3"><i class="bi bi-sliders me-1"></i> TIẾN ĐỘ TỪNG HẠNG MỤC:</div>
+                            ${subtasksHtml || '<span class="text-muted small">Không có hạng mục chi tiết.</span>'}
+                        </div>
 
-                    <!-- KHUNG TRAO ĐỔI / GIẢI TRÌNH CHAT CỦA NHÂN VIÊN -->
-                    <div class="p-3 rounded bg-black bg-opacity-50 border border-secondary mb-3">
-                        <div class="text-info fw-bold small mb-2"><i class="bi bi-chat-dots-fill me-1"></i> TRAO ĐỔI & GIẢI TRÌNH:</div>
-                        <div id="comments_box_${t.id}" class="mb-2 custom-scrollbar" style="max-height: 120px; overflow-y: auto;"></div>
-                        <div class="input-group input-group-sm">
-                            <input type="text" id="comment_input_${t.id}" class="form-control text-white bg-dark border-secondary" placeholder="Nhập giải trình lý do chậm, trao đổi...">
-                            <button onclick="sendTaskComment('${t.id}')" class="btn btn-outline-info fw-bold">GỬI</button>
+                        <!-- KHUNG TRAO ĐỔI / GIẢI TRÌNH CHAT CỦA NHÂN VIÊN -->
+                        <div class="p-3 rounded bg-black bg-opacity-50 border border-secondary mb-3">
+                            <div class="text-info fw-bold small mb-2"><i class="bi bi-chat-dots-fill me-1"></i> TRAO ĐỔI & GIẢI TRÌNH:</div>
+                            <div id="comments_box_${t.id}" class="mb-2 custom-scrollbar" style="max-height: 120px; overflow-y: auto;"></div>
+                            <div class="input-group input-group-sm">
+                                <input type="text" id="comment_input_${t.id}" class="form-control text-white bg-dark border-secondary" placeholder="Nhập giải trình lý do chậm, trao đổi...">
+                                <button onclick="sendTaskComment('${t.id}')" class="btn btn-outline-info fw-bold">GỬI</button>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="progress" style="height: 8px;"><div class="progress-bar bg-${statusInfo.color}" style="width: ${t.progress}%"></div></div>
+                    <!-- Thanh tiến độ luôn hiện bên dưới đáy -->
+                    <div class="progress mt-2" style="height: 8px;"><div class="progress-bar bg-${statusInfo.color}" style="width: ${t.progress}%"></div></div>
                 </div>`;
 
                 // GỌI TẢI COMMENT SAU KHI VẼ XONG GIAO DIỆN
@@ -612,6 +817,20 @@
                 if (err2) alert("Lỗi cập nhật tiến độ tổng: " + err2.message);
             }
             loadMyProfessionalTasks(); // Tải lại để cập nhật màu sắc
+        }
+
+        // HÀM ĐỔI MÀU THANH KÉO NGAY KHI ĐANG LƯỚT TAY
+        function updateSliderUI(slider, id) {
+            let val = parseInt(slider.value);
+            document.getElementById(`sub_val_${id}`).innerText = val + '%';
+            
+            let color = '#0ea5e9'; // Xanh dương (Mặc định)
+            if (val === 100) color = '#10b981'; // Xanh lá (Hoàn thành)
+            else if (val <= 30) color = '#ef4444'; // Đỏ (Mới bắt đầu/Chậm trễ)
+            else if (val <= 60) color = '#f59e0b'; // Vàng (Đang làm)
+
+            // Đổ màu gradient: Phần đã kéo có màu, phần chưa kéo màu xám đen
+            slider.style.background = `linear-gradient(to right, ${color} ${val}%, #2b3035 ${val}%)`;
         }
                     // Gửi báo cáo định kỳ theo các mốc thời gian
         async function submitPeriodicReport(taskId) {
@@ -680,25 +899,18 @@
                 .gte('created_at', today.toISOString())
                 .limit(1);
 
-            let footer = document.getElementById('footerControls');
+            let topBtn = document.getElementById('topCheckInBtn');
+            if(!topBtn) return; // Tránh lỗi nếu chưa load xong giao diện
             
             if(data && data.length > 0) {
-                // ĐÃ ĐIỂM DANH: Nút màu xanh, khóa lại, hiện giờ
                 let time = new Date(data[0].created_at).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'});
-                footer.innerHTML = `
-                    <button class="btn py-3 fw-bold flex-grow-1 text-white bg-success border-0 border-end border-secondary rounded-0" disabled>
-                        <i class="bi bi-check-circle-fill me-2 fs-5"></i> ĐÃ ĐIỂM DANH LÚC ${time}
-                    </button>
-                    <button onclick="handleLogout()" class="btn py-3 fw-bold flex-grow-1 text-danger bg-dark border-0 rounded-0"><i class="bi bi-box-arrow-right me-2 fs-5"></i> THOÁT</button>
-                `;
+                topBtn.className = "btn btn-sm nav-menu-btn fw-bold text-nowrap btn-success text-white border-success opacity-100";
+                topBtn.disabled = true;
+                topBtn.innerHTML = `<i class="bi bi-check-circle-fill"></i><span class="nav-menu-text ms-1">${time}</span>`;
             } else {
-                // CHƯA ĐIỂM DANH: Hiện nút bấm bình thường
-                footer.innerHTML = `
-                    <button onclick="checkIn()" class="btn py-3 fw-bold flex-grow-1 text-success bg-dark border-0 border-end border-secondary rounded-0">
-                        <i class="bi bi-geo-alt-fill me-2 fs-5"></i> ĐIỂM DANH HÔM NAY
-                    </button>
-                    <button onclick="handleLogout()" class="btn py-3 fw-bold flex-grow-1 text-danger bg-dark border-0 rounded-0"><i class="bi bi-box-arrow-right me-2 fs-5"></i> THOÁT</button>
-                `;
+                topBtn.className = "btn btn-sm nav-menu-btn fw-bold text-nowrap btn-outline-success text-success border-success opacity-100";
+                topBtn.disabled = false;
+                topBtn.innerHTML = `<i class="bi bi-geo-alt-fill"></i><span class="nav-menu-text ms-1">ĐIỂM DANH</span>`;
             }
         }
 
@@ -749,53 +961,6 @@
             }
         }
 
-        // ================= TÍNH NĂNG SỬA CÔNG VIỆC AN TOÀN =================
-        async function editTask(taskId) {
-            try {
-                const { data, error } = await supabaseClient.from('employee_kpis').select('*').eq('id', taskId).single();
-                if (error) throw error;
-                
-                if (data) {
-                    document.getElementById('editTaskId').value = data.id;
-                    document.getElementById('editTaskName').value = data.task_name;
-                    
-                    if (data.due_date) {
-                        let d = new Date(data.due_date);
-                        d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); 
-                        document.getElementById('editTaskDue').value = d.toISOString().slice(0,16);
-                    } else {
-                        document.getElementById('editTaskDue').value = '';
-                    }
-
-                    // Mở bảng Sửa
-                    document.getElementById('editModal').classList.remove('d-none');
-                }
-            } catch (err) {
-                console.error("Lỗi nút sửa:", err);
-                alert("Không thể tải thông tin công việc: " + err.message);
-            }
-        }
-
-        async function saveEditTask() {
-            let id = document.getElementById('editTaskId').value;
-            let newName = document.getElementById('editTaskName').value.trim();
-            let newDue = document.getElementById('editTaskDue').value;
-
-            if (!newName) return alert("Tên công việc không được để trống!");
-
-            const { error } = await supabaseClient.from('employee_kpis').update({
-                task_name: newName,
-                due_date: newDue ? new Date(newDue).toISOString() : null
-            }).eq('id', id);
-
-            if (error) {
-                alert("❌ Lỗi khi lưu: " + error.message);
-            } else {
-                document.getElementById('editModal').classList.add('d-none');
-                loadAllTasksAdmin(); 
-            }
-        }
-    
         // Tải danh sách tin nhắn trao đổi của một công việc
         async function loadTaskComments(taskId) {
             const { data: comments } = await supabaseClient.from('task_comments')
@@ -809,9 +974,9 @@
             let html = '';
             if (comments && comments.length > 0) {
                 comments.forEach(c => {
-                    let isAdmin = c.profiles.role === 'admin';
+                    let isAdmin = ['admin', 'pho_giam_doc', 'truong_phong', 'pho_phong'].includes(c.profiles.role);
                     let bgStyle = isAdmin ? 'background: rgba(14, 165, 233, 0.1); border-left: 3px solid #0ea5e9;' : 'background: rgba(255, 255, 255, 0.05); border-left: 3px solid #f59e0b;';
-                    let timeStr = new Date(c.created_at).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'});
+                    let timeStr = formatDateVN(c.created_at); // Đổi sang ngày tháng full
                     
                     html += `
                     <div class="p-2 mb-2 rounded small" style="${bgStyle}">
@@ -849,46 +1014,5 @@
             }
         }
     </script>
-    <!-- ========================================== -->
-    <!-- 1. BẢNG SỬA CÔNG VIỆC CHUYÊN NGHIỆP        -->
-    <!-- ========================================== -->
-    <div id="editModal" class="d-none" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 999999;">
-        <div class="p-4 rounded-4 shadow-lg bg-dark" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 500px; border: 1px solid #0ea5e9;">
-            <h5 class="text-info fw-bold mb-3"><i class="bi bi-pencil-square me-2"></i>SỬA THÔNG TIN CÔNG VIỆC</h5>
-            <input type="hidden" id="editTaskId">
-            
-            <div class="mb-3">
-                <label class="text-white small fw-bold mb-1">Tên công việc</label>
-                <input type="text" id="editTaskName" class="form-control text-white" style="background: #121416; border: 1px solid #2b3035;">
-            </div>
-            
-            <div class="mb-4">
-                <label class="text-white small fw-bold mb-1">Hạn chót mới</label>
-                <input type="datetime-local" id="editTaskDue" class="form-control text-white" style="background: #121416; border: 1px solid #2b3035;">
-            </div>
-            
-            <div class="d-flex gap-2">
-                <button onclick="saveEditTask()" class="btn btn-info flex-grow-1 fw-bold text-dark">LƯU THAY ĐỔI</button>
-                <button onclick="document.getElementById('editModal').classList.add('d-none')" class="btn btn-secondary flex-grow-1 fw-bold">HỦY BỎ</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ========================================== -->
-    <!-- 2. BẢNG CẢNH BÁO XÓA CÔNG VIỆC CỰC ĐẸP     -->
-    <!-- ========================================== -->
-    <div id="deleteModal" class="d-none" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 999999;">
-        <div class="p-4 rounded-4 shadow-lg bg-dark text-center" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 400px; border: 1px solid #ef4444;">
-            <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 3.5rem;"></i>
-            <h4 class="text-white fw-bold mt-2 mb-2">CẢNH BÁO XÓA</h4>
-            <p class="text-white-50 small mb-4">Bạn có chắc chắn muốn xóa công việc này?<br>Toàn bộ hạng mục con, nhân sự phân công và dữ liệu tiến độ sẽ bị xóa vĩnh viễn!</p>
-            <input type="hidden" id="deleteTaskId">
-            
-            <div class="d-flex gap-2">
-                <button onclick="confirmDeleteTask()" class="btn btn-danger flex-grow-1 fw-bold py-2">XÓA NGAY</button>
-                <button onclick="document.getElementById('deleteModal').classList.add('d-none')" class="btn btn-secondary flex-grow-1 fw-bold py-2">HỦY BỎ</button>
-            </div>
-        </div>
-    </div>
-</body>
+    </body>
 </html>

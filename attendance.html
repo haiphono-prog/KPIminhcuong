@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Chấm Công - Quản lý KPI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- THƯ VIỆN XUẤT EXCEL (SheetJS) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        body { background-color: #000; overflow-x: hidden; margin: 0; color: #fff; }
+        .nav-menu-btn { transition: all 0.2s ease-in-out; }
+
+        @media (max-width: 767px) {
+            .mobile-px-half { padding-left: 0.5px !important; padding-right: 0.5px !important; }
+            .mobile-margin-0 { margin-left: 0 !important; margin-right: 0 !important; }
+            .nav-menu-text { display: none; }
+            .nav-menu-btn { background: transparent !important; border: 1px solid rgba(255,255,255,0.2) !important; color: #fff !important; padding: 6px 12px !important; border-radius: 8px; font-size: 1.1rem; opacity: 1 !important; }
+            #headerTitle { font-size: 0.7rem !important; white-space: normal !important; overflow: visible !important; line-height: 1.3; text-align: left; }
+        }
+
+        .nav-menu-btn.active-nav { background: #0ea5e9 !important; color: #000 !important; border-color: #0ea5e9 !important; opacity: 1 !important; }
+        .custom-scrollbar::-webkit-scrollbar { display: none !important; }
+        .custom-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .day-box { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-size: 0.75rem; font-weight: bold; margin: 2px; border: 1px solid #2b3035;}
+        .day-present { background-color: rgba(16, 185, 129, 0.2); color: #10b981; border-color: #10b981; }
+        .day-absent { background-color: #121416; color: #6c757d; }
+    </style>
+</head>
+<body>
+    <div class="position-fixed top-0 start-0 w-100 h-100 d-flex flex-column animate__animated animate__fadeIn" style="background: #000; z-index: 99999; overflow-x: hidden;">
+        
+        <div class="d-flex p-2 border-bottom border-secondary bg-dark align-items-center sticky-top justify-content-between shadow-sm flex-shrink-0" style="z-index: 1020; padding-top: max(env(safe-area-inset-top), 0.5rem) !important;">
+            <div class="d-flex align-items-center overflow-hidden pe-1">
+                <button onclick="window.location.href='dashboard.html'" class="btn btn-sm text-white-50 p-1 bg-transparent border-0 shadow-none me-1"><i class="bi bi-arrow-left fs-4"></i></button>
+                <div class="text-info fw-bold" id="headerTitle" style="font-size: 1rem; line-height: 1.2;">ĐANG TẢI...</div>
+            </div>
+            
+            <div class="d-flex gap-1 gap-md-2 flex-shrink-0">
+                <button onclick="window.location.href='dashboard.html'" class="btn btn-sm nav-menu-btn btn-outline-light fw-bold text-nowrap"><i class="bi bi-house-door"></i><span class="nav-menu-text ms-1">TỔNG QUAN</span></button>
+                <button onclick="window.location.href='task_form.html'" class="btn btn-sm nav-menu-btn btn-outline-light fw-bold text-nowrap"><i class="bi bi-clipboard-plus"></i><span class="nav-menu-text ms-1">GIAO VIỆC</span></button>
+                <button onclick="window.location.href='accounts.html'" class="btn btn-sm nav-menu-btn btn-outline-light fw-bold text-nowrap"><i class="bi bi-people"></i><span class="nav-menu-text ms-1">PHÂN QUYỀN</span></button>
+                <button onclick="window.location.href='attendance.html'" class="btn btn-sm active-nav nav-menu-btn fw-bold text-nowrap"><i class="bi bi-calendar-check"></i><span class="nav-menu-text ms-1">CHẤM CÔNG</span></button>
+            </div>
+        </div>
+
+        <div class="flex-grow-1 overflow-auto custom-scrollbar p-0">
+            <div class="p-3 mx-auto pb-5" style="max-width: 1000px;">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="text-success fw-bold mb-0 d-flex align-items-center fs-5">
+                        <i class="bi bi-calendar3 me-2"></i>CHẤM CÔNG
+                    </h5>
+                    <div class="d-flex align-items-center">
+                        <span id="monthDisplay" class="badge bg-secondary fs-6 me-2">...</span>
+                        <!-- Nút Xuất Excel (Sẽ tự động giấu chữ trên Mobile) -->
+                        <button id="btnExportExcel" onclick="exportToExcel()" class="btn btn-sm btn-success fw-bold shadow-sm d-none" title="Xuất Excel">
+                            <i class="bi bi-file-earmark-excel"></i><span class="d-none d-md-inline ms-1">XUẤT EXCEL</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="attendanceContainer" class="row g-3">
+                    <div class="text-center text-white-50">Đang truy xuất dữ liệu...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const supabaseUrl = 'https://muzfjjyntqzsvwkwmors.supabase.co'; 
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11emZqanludHF6c3Z3a3dtb3JzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2MTAwNzgsImV4cCI6MjEwNzE4NjA3OH0.T8UcIVo6IwUssCGPNvXdeY5BFkGhjyR2GehTQJbgmkE';
+        const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        // Khai báo biến toàn cục để dùng cho hàm Xuất Excel
+        let globalProfiles = [];
+        let globalDates = [];
+        let globalAttendanceLogs = [];
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) return window.location.href = "index.html";
+            
+            const { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', session.user.id).single();
+            if(profile) {
+                document.getElementById('headerTitle').innerText = profile.full_name.toUpperCase();
+                // Nếu là nhóm Giám đốc/Quản lý thì bật nút XUẤT EXCEL lên
+                if (['admin', 'pho_giam_doc', 'truong_phong', 'pho_phong'].includes(profile.role)) {
+                    document.getElementById('btnExportExcel').classList.remove('d-none');
+                }
+            }
+            loadAttendanceMonth();
+        });
+
+        async function loadAttendanceMonth() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            document.getElementById('monthDisplay').innerText = `${month + 1}/${year}`;
+
+            let dates = [];
+            for(let i = 1; i <= daysInMonth; i++) {
+                let d = new Date(year, month, i);
+                d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); 
+                dates.push(d);
+            }
+            globalDates = dates; // Lưu lại để xuất file
+
+            const startDate = dates[0].toISOString().split('T')[0];
+            
+            const { data: profiles } = await supabaseClient.from('profiles').select('*').neq('role', 'admin').order('full_name', { ascending: true });
+            const { data: attendanceLogs } = await supabaseClient.from('attendance').select('*').gte('created_at', startDate);
+            
+            globalProfiles = profiles || [];
+            globalAttendanceLogs = attendanceLogs || [];
+
+            let html = '';
+            globalProfiles.forEach(p => {
+                let totalPresent = 0;
+                let gridHtml = '';
+                
+                globalDates.forEach(d => {
+                    let dateString = d.toISOString().split('T')[0];
+                    let isFuture = d > now;
+                    // Lọc bản ghi của ngày đó (Tránh lỗi đếm đúp)
+                    let records = globalAttendanceLogs.filter(log => log.employee_id === p.id && log.created_at.startsWith(dateString));
+                    
+                    if (records.length > 0) {
+                        totalPresent++;
+                        gridHtml += `<div class="day-box day-present">${d.getDate()}</div>`;
+                    } else {
+                        gridHtml += `<div class="day-box day-absent" style="${isFuture ? 'opacity: 0.3;' : ''}">${d.getDate()}</div>`;
+                    }
+                });
+
+                html += `
+                <div class="col-md-6 col-lg-4">
+                    <div class="p-3 rounded-4 shadow-sm" style="background: #1a1d20; border: 1px solid #2b3035;">
+                        <div class="d-flex justify-content-between align-items-center mb-3 border-bottom border-secondary pb-2">
+                            <h6 class="text-white fw-bold mb-0">${p.full_name}</h6>
+                            <span class="badge bg-success fs-6">${totalPresent} ngày</span>
+                        </div>
+                        <div class="d-flex flex-wrap">${gridHtml}</div>
+                    </div>
+                </div>`;
+            });
+
+            document.getElementById('attendanceContainer').innerHTML = html;
+        }
+
+        // ================= HÀM XUẤT EXCEL CHUYÊN NGHIỆP =================
+        function exportToExcel() {
+            if (globalProfiles.length === 0) return alert("Chưa có dữ liệu để xuất!");
+
+            let excelData = [];
+            
+            // 1. Tạo mảng Tiêu đề cột
+            let header = ['STT', 'Họ và Tên'];
+            globalDates.forEach(d => header.push(d.getDate() + '/' + (d.getMonth() + 1)));
+            header.push('TỔNG CÔNG');
+            excelData.push(header);
+
+            // 2. Chèn dữ liệu từng người
+            globalProfiles.forEach((p, index) => {
+                let row = [index + 1, p.full_name];
+                let totalPresent = 0;
+                
+                globalDates.forEach(d => {
+                    let dateString = d.toISOString().split('T')[0];
+                    let records = globalAttendanceLogs.filter(log => log.employee_id === p.id && log.created_at.startsWith(dateString));
+                    
+                    if (records.length > 0) {
+                        row.push('X'); // Ghi chữ X cho ngày đi làm
+                        totalPresent++;
+                    } else {
+                        row.push(''); // Ngày vắng mặt bỏ trống
+                    }
+                });
+                
+                row.push(totalPresent);
+                excelData.push(row);
+            });
+
+            // 3. Khởi tạo Workbook và Worksheet của SheetJS
+            let wb = XLSX.utils.book_new();
+            let ws = XLSX.utils.aoa_to_sheet(excelData);
+
+            // 4. Chỉnh độ rộng cột cho đẹp
+            let wscols = [{wch: 5}, {wch: 25}]; // Cột STT (5), Cột Tên (25)
+            globalDates.forEach(() => wscols.push({wch: 6})); // Các cột ngày rộng 6
+            wscols.push({wch: 15}); // Cột Tổng
+            ws['!cols'] = wscols;
+
+            // 5. Xuất file và tự động tải xuống
+            XLSX.utils.book_append_sheet(wb, ws, "Bang_Cham_Cong");
+            
+            const now = new Date();
+            let fileName = `Bang_Cham_Cong_${now.getMonth()+1}_${now.getFullYear()}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+        }
+    </script>
+</body>
+</html>
